@@ -32,7 +32,7 @@ public final class Events implements Listener {
         if(game.players.contains(e.getEntity())) {
             final Player player = e.getEntity();
             Location realSpawn = player.getBedSpawnLocation();
-            player.setBedSpawnLocation(new Location(game.world, 8, game.world.getHighestBlockYAt(8, 8) + 2, 8));
+            player.setBedSpawnLocation(game.getSpawnLocation());
             Bukkit.getScheduler().scheduleSyncDelayedTask(WorldEater.getPlugin(), () -> {
                 player.spigot().respawn();
                 player.setBedSpawnLocation(realSpawn);
@@ -40,6 +40,7 @@ public final class Events implements Listener {
                 if(!player.equals(game.hider)) {
                     player.setAllowFlight(true);
                     player.setFlying(true);
+                    player.setInvulnerable(true);
                     player.setInvisible(true);
 
                     game.frozenPlayers.add(player);
@@ -61,6 +62,7 @@ public final class Events implements Listener {
                         public void run() {
                             player.setAllowFlight(false);
                             player.setFlying(false);
+                            player.setInvulnerable(false);
                             player.setInvisible(false);
 
                             game.frozenPlayers.remove(player);
@@ -100,6 +102,6 @@ public final class Events implements Listener {
     @EventHandler
     private void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
         if(game.players != null && game.players.contains(e.getPlayer()) && !e.getPlayer().getWorld().equals(game.world))
-            e.getPlayer().teleport(new Location(game.world, 8, game.world.getHighestBlockYAt(8, 8) + 2, 8));
+            e.getPlayer().teleport(game.getSpawnLocation());
     }
 }

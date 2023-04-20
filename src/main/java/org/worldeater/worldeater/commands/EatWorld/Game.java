@@ -28,7 +28,7 @@ import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Game {
-    private static ArrayList<Game> instances;
+    private final static ArrayList<Game> instances = new ArrayList<>();
 
     enum GameStatus {
         AWAITING_START,
@@ -54,10 +54,10 @@ public class Game {
     public Game() {
         instance = this;
         instances.add(this);
-        gameId = ThreadLocalRandom.current().nextInt((int) Math.pow(10, 4), (int) Math.pow(10, 5));
+        gameId = ThreadLocalRandom.current().nextInt((int) Math.pow(10, 3), (int) Math.pow(10, 4));
 
         WorldEater.sendBroadcast("§6A game of WorldEater is starting in §c20§6 seconds.");
-        WorldEater.sendBroadcast("§6To join the game, type §f/eatworld join§6.");
+        WorldEater.sendBroadcast("§6To join the game, type §f/eatworld join " + gameId + "§6.");
 
         players = new ArrayList<Player>();
 
@@ -65,6 +65,9 @@ public class Game {
         WorldEater.getPlugin().getServer().getPluginManager().registerEvents(eventListener, WorldEater.getPlugin());
 
         status = GameStatus.AWAITING_START;
+
+        frozenPlayers = new ArrayList<>();
+        bukkitTasks = new ArrayList<>();
 
         new BukkitRunnable() {
             @Override
@@ -78,9 +81,6 @@ public class Game {
                     WorldEater.sendBroadcast("Not enough players joined. Game aborted.");
                     return;
                 }
-
-                frozenPlayers = new ArrayList<>();
-                bukkitTasks = new ArrayList<>();
 
                 sendGameMessage("Ready to start game!");
                 sendGameMessage("Creating normal world...");
@@ -120,7 +120,7 @@ public class Game {
 
                 // Clone chunk
 
-                Chunk normalChunk = normalWorld.getChunkAt(new Location(world, 0, 0, 0));
+                Chunk normalChunk = normalWorld.getChunkAt(new Location(normalWorld, 0, 0, 0));
                 Chunk chunk = world.getChunkAt(0, 0);
 
                 sendGameMessage("Cloning chunk...");
@@ -154,7 +154,7 @@ public class Game {
                 sendGameMessage("Moving players...");
 
                 for(Player eachPlayer : players) {
-                    eachPlayer.teleport(new Location(world, 8, world.getHighestBlockYAt(8, 8) + 2, 8));
+                    eachPlayer.teleport(getSpawnLocation());
 
                     Scoreboard score = Bukkit.getScoreboardManager().getMainScoreboard();
 
@@ -199,7 +199,7 @@ public class Game {
                                 eachPlayer.setAllowFlight(true);
                                 eachPlayer.setFlying(true);
                                 eachPlayer.setInvisible(true);
-                                eachPlayer.teleport(new Location(world, 8, world.getHighestBlockYAt(8, 8) + 100, 8));
+                                eachPlayer.teleport(getSpawnLocation().add(0, 100, 0));
                                 eachPlayer.sendTitle("§ePlease wait", "§ewhile hider is getting ready.", 0, 20 * 10, 0);
                             }
                         }
@@ -239,7 +239,7 @@ public class Game {
                                         eachPlayer.setAllowFlight(false);
                                         eachPlayer.setFlying(false);
                                         eachPlayer.setInvisible(false);
-                                        eachPlayer.teleport(new Location(world, 8, world.getHighestBlockYAt(8, 8) + 2, 8));
+                                        eachPlayer.teleport(getSpawnLocation());
                                         eachPlayer.setGameMode(GameMode.SURVIVAL);
                                     }
                                     eachPlayer.playSound(eachPlayer, Sound.BLOCK_ANVIL_LAND, 2, 2);
@@ -366,11 +366,10 @@ public class Game {
     }
 
     protected void sendGameMessage(String s) {
-        if(players == null)
-            return;
-
-        for(Player eachPlayer : players) {
-            eachPlayer.sendMessage(WorldEater.messagePrefix + s);
+        if(players != null) {
+            for(Player eachPlayer : players) {
+                WorldEater.sendMessage(eachPlayer, s);
+            }
         }
     }
 
@@ -398,11 +397,9 @@ public class Game {
                     sendGameMessage("Moving players from world...");
 
                     for(Player player : world.getPlayers()) {
+                        player.setInvulnerable(false);
                         player.setInvisible(false);
-                        Location movePlayerTo = player.getBedSpawnLocation();
-                        if (movePlayerTo == null)
-                            movePlayerTo = new Location(WorldEater.getPlugin().getServer().getWorlds().get(0), 0, 0, 0);
-                        player.teleport(movePlayerTo);
+                        player.teleport(new Location(WorldEater.getPlugin().getServer().getWorlds().get(0), 0, 0, 0));
                     }
 
                     sendGameMessage("Unloading world...");
@@ -470,5 +467,9 @@ public class Game {
         if(players.size() == maxPlayers) {
             WorldEater.sendBroadcast("§aThe game has been filled!");
         }
+    }
+
+    protected Location getSpawnLocation() {
+        return new Location(world, 8, world.getHighestBlockYAt(8, 8) + 2, 8);
     }
 }
