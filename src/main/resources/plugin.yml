@@ -1,0 +1,13 @@
+name: WorldEater
+version: '${project.version}'
+main: org.worldeater.worldeater.WorldEater
+api-version: 1.19
+commands:
+  eatworld:
+    description: Eat this world
+    usage: /eatworld [join|stop|debug]
+    permission: operator
+permissions:
+  operator:
+    default: true
+    description: Operator
