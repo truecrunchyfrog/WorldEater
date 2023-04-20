@@ -5,8 +5,7 @@ api-version: 1.19
 commands:
   eatworld:
     description: Eat this world
-    usage: /eatworld [join|stop|debug]
-    permission: operator
+    usage: /eatworld <join|leave|create|stop>
 permissions:
   operator:
     default: true

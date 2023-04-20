@@ -1,7 +1,9 @@
 package org.worldeater.worldeater;
 
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.worldeater.worldeater.commands.EatWorld;
+import org.worldeater.worldeater.commands.EatWorld.EatWorld;
 
 public final class WorldEater extends JavaPlugin {
 
@@ -26,7 +28,19 @@ public final class WorldEater extends JavaPlugin {
         return plugin;
     }
 
-    public static void sendBroadcast(String s) {
-        plugin.getServer().broadcastMessage(messagePrefix + s);
+    private static String getFancyText(String text) {
+        return messagePrefix + text;
+    }
+
+    public static void sendBroadcast(String text) {
+        plugin.getServer().broadcastMessage(getFancyText(text));
+    }
+
+    public static void sendMessage(CommandSender commandSender, String text) {
+        commandSender.sendMessage(getFancyText(text));
+    }
+
+    public static void sendMessage(Player player, String text) {
+        player.sendMessage(getFancyText(text));
     }
 }
