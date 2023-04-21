@@ -37,7 +37,7 @@ public class EatWorld implements CommandExecutor {
                     }
 
                     if(autoSelectedGame == null) {
-                        WorldEater.sendMessage(commandSender, "§cNo game chosen! Please provide a game ID together with the command: \"§e/eatworld stop <ID>§c\", or \"§e/eatworld stop all§c\" to stop all games. Alternatively, run the game when in a game.");
+                        WorldEater.sendMessage(commandSender, "§cNo game chosen! Please provide a game ID together with the command: §e/eatworld stop <ID>§c, or §e/eatworld stop all§c to stop all games. Alternatively, run the game when in a game.");
                         return true;
                     }
                 }
@@ -94,7 +94,7 @@ public class EatWorld implements CommandExecutor {
                 }
 
                 if(strings.length < 2) {
-                    WorldEater.sendMessage(commandSender, "§cNo game chosen! Please provide a game ID together with the command: \"§e/eatworld join <ID>§c\".");
+                    WorldEater.sendMessage(commandSender, "§cNo game chosen! Please provide a game ID together with the command: §e/eatworld join <ID>§c.");
                     return true;
                 }
 
@@ -125,14 +125,23 @@ public class EatWorld implements CommandExecutor {
                     return true;
                 }
 
-                joinGame.playerJoin((Player) commandSender);
+                joinGame.playerJoin((Player) commandSender, strings.length > 2 && strings[2].equalsIgnoreCase("spectate"));
             } else if(strings[0].equalsIgnoreCase("leave")) {
                 if(!(commandSender instanceof Player)) {
                     WorldEater.sendMessage(commandSender, "§cOnly players can leave games.");
                     return true;
                 }
 
-                WorldEater.sendMessage(commandSender, "§cGAME LEAVE LOGIC GOES HERE!");
+                Player player = (Player) commandSender;
+
+                ArrayList<Game> gameInstances = Game.getInstances();
+
+                for(Game eachGame : gameInstances) {
+                    if(eachGame.players.contains(player) || eachGame.spectators.contains(player)) {
+                        eachGame.playerLeave(player);
+                        break;
+                    }
+                }
             } else if(strings[0].equalsIgnoreCase("create")) {
                 if(!commandSender.isOp()) {
                     WorldEater.sendMessage(commandSender, "§cOnly operators may create games.");

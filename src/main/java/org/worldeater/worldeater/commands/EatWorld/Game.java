@@ -39,7 +39,7 @@ public class Game {
     private final Game instance;
     public final int gameId;
     protected GameStatus status;
-    protected ArrayList<Player> players, frozenPlayers;
+    protected ArrayList<Player> players, frozenPlayers, spectators;
     protected Player hider;
     private static final int maxPlayers = 5;
     protected World world;
@@ -56,9 +56,6 @@ public class Game {
         instances.add(this);
         gameId = ThreadLocalRandom.current().nextInt((int) Math.pow(10, 3), (int) Math.pow(10, 4));
 
-        WorldEater.sendBroadcast("§6A game of WorldEater is starting in §c20§6 seconds.");
-        WorldEater.sendBroadcast("§6To join the game, type §f/eatworld join " + gameId + "§6.");
-
         players = new ArrayList<Player>();
 
         eventListener = new Events(this);
@@ -67,9 +64,28 @@ public class Game {
         status = GameStatus.AWAITING_START;
 
         frozenPlayers = new ArrayList<>();
+        spectators = new ArrayList<>();
         bukkitTasks = new ArrayList<>();
 
-        new BukkitRunnable() {
+        int startDelay = 20;
+
+        WorldEater.sendBroadcast("§6A game of WorldEater is starting in §c" + startDelay + "§6 seconds.");
+        WorldEater.sendBroadcast("§6To join the game, type §f/eatworld join " + gameId + "§6.");
+
+        for(int i = startDelay; i > 0; i -= 5) {
+            int finalI = i;
+            bukkitTasks.add(new BukkitRunnable() {
+                @Override
+                public void run() {
+                    for(Player eachPlayer : players) {
+                        eachPlayer.playSound(eachPlayer, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 5, 5);
+                    }
+                    sendGameMessage("§4[§c§l!§4] §6Game will start in §c" + finalI + " seconds.");
+                }
+            }.runTaskLater(WorldEater.getPlugin(), 20L * (startDelay - i)));
+        }
+
+        bukkitTasks.add(new BukkitRunnable() {
             @Override
             public void run() {
                 status = GameStatus.RUNNING;
@@ -168,6 +184,7 @@ public class Game {
                     eachPlayer.setGameMode(GameMode.ADVENTURE);
                     eachPlayer.setHealth(20);
                     eachPlayer.setFoodLevel(20);
+                    eachPlayer.setLevel(0);
 
                     eachPlayer.getInventory().clear();
 
@@ -235,7 +252,6 @@ public class Game {
 
                                 for(Player eachPlayer : players) {
                                     if(!eachPlayer.equals(hider)) {
-                                        eachPlayer.removePotionEffect(PotionEffectType.BLINDNESS);
                                         eachPlayer.setAllowFlight(false);
                                         eachPlayer.setFlying(false);
                                         eachPlayer.setInvisible(false);
@@ -245,7 +261,7 @@ public class Game {
                                     eachPlayer.playSound(eachPlayer, Sound.BLOCK_ANVIL_LAND, 2, 2);
                                 }
 
-                                sendGameMessage("§c(!) Starting from the top of the island to the bottom, each layer of blocks will be removed at an increasing rate.");
+                                sendGameMessage("§c(!) Starting from the top of the island to the bottom, each layer of blocks will be removed at an exponential rate.");
 
                                 int startY = 0;
 
@@ -336,7 +352,7 @@ public class Game {
                                                                                 setZ(targetLocation.getZ() - horseLocation.getZ());
                                                                         horse.setVelocity(horseApproach.multiply(0.3));
                                                                         horse.getLocation().setDirection(horseApproach);
-                                                                        //horse.setGravity(false);
+                                                                        horse.setGravity(false);
                                                                         bukkitTasks.add(new BukkitRunnable() {
                                                                             @Override
                                                                             public void run() {
@@ -362,7 +378,7 @@ public class Game {
                     }
                 }.runTaskLater(WorldEater.getPlugin(), 20 * 10));
             }
-        }.runTaskLater(WorldEater.getPlugin(), 20 * 20);
+        }.runTaskLater(WorldEater.getPlugin(), 20 * startDelay));
     }
 
     protected void sendGameMessage(String s) {
@@ -397,6 +413,13 @@ public class Game {
                     sendGameMessage("Moving players from world...");
 
                     for(Player player : world.getPlayers()) {
+                        player.setGameMode(GameMode.SURVIVAL);
+                        player.getInventory().clear();
+
+                        player.setHealth(20);
+                        player.setFoodLevel(20);
+                        player.setLevel(0);
+
                         player.setInvulnerable(false);
                         player.setInvisible(false);
                         player.teleport(new Location(WorldEater.getPlugin().getServer().getWorlds().get(0), 0, 0, 0));
@@ -420,6 +443,7 @@ public class Game {
                 world = null;
                 players = null;
                 frozenPlayers = null;
+                spectators = null;
                 hider = null;
                 bukkitTasks = null;
                 debug = false;
@@ -437,8 +461,6 @@ public class Game {
         for(Player eachPlayer : players) {
             eachPlayer.sendTitle((!hiderWins && !eachPlayer.equals(hider)) || (hiderWins && eachPlayer.equals(hider)) ? "§a§lVictory!" : "§c§lLost!", !hiderWins ? "§eThe seekers won the game." : "§eThe hider won the game.", 0, 20 * 6, 0);
             eachPlayer.playSound(eachPlayer, Sound.BLOCK_BELL_USE, 3, 3);
-
-            eachPlayer.setGameMode(GameMode.SURVIVAL);
         }
 
         sendGameMessage("§aThe game has ended. Thanks for playing.");
@@ -449,9 +471,22 @@ public class Game {
         }
     }
 
-    protected void playerJoin(Player player) {
+    protected void playerJoin(Player player, boolean spectator) {
+        if(spectator) {
+            WorldEater.sendMessage(player, "Joining game as spectator, please wait...");
+            player.setGameMode(GameMode.SPECTATOR);
+            player.teleport(getSpawnLocation());
+            for(Player eachPlayer : players) {
+                eachPlayer.playSound(eachPlayer, Sound.ENTITY_CAT_HISS, 2, 2);
+            }
+            sendGameMessage("§e" + player.getName() + "§7 is watching as a spectator.");
+            spectators.add(player);
+            return;
+        }
+
+
         if(status != GameStatus.AWAITING_START) {
-            WorldEater.sendMessage(player, "§cThis game has already started.");
+            WorldEater.sendMessage(player, "§cThis game has already started. If you wish to spectate this game, use §e/eatworld join " + gameId + " spectate§c.");
             return;
         }
 
@@ -462,9 +497,19 @@ public class Game {
 
         players.add(player);
         WorldEater.sendMessage(player, "§aYou joined! Please wait for the game to start.");
-        WorldEater.sendBroadcast("§a" + player.getName() + "§8 joined the game queue (§6" + players.size() + "§8/§6" + maxPlayers + "§8).");
+        WorldEater.sendBroadcast("§a" + player.getName() + "§7 joined the game queue (§6" + players.size() + "§7/§6" + maxPlayers + "§7).");
 
         if(players.size() == maxPlayers) {
+            WorldEater.sendBroadcast("§aThe game has been filled!");
+        }
+    }
+
+    protected void playerLeave(Player player) {
+        if(players.contains(player)) {
+            players.remove(player);
+            WorldEater.sendBroadcast("Player "); // todo
+        } else if(spectators.contains(player)) {
+            spectators.remove(player);
             WorldEater.sendBroadcast("§aThe game has been filled!");
         }
     }

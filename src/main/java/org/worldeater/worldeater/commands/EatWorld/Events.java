@@ -1,6 +1,7 @@
 package org.worldeater.worldeater.commands.EatWorld;
 
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -79,8 +80,8 @@ public final class Events implements Listener {
 
     @EventHandler
     private void onPlayerQuit(PlayerQuitEvent e) {
-        if(game.players.contains(e.getPlayer())) {
-            Player playerQuit = e.getPlayer();
+        Player playerQuit = e.getPlayer();
+        if(game.players.contains(playerQuit)) { // TODO Fix better player cleaning/restoring methods. On quit, leave world, /eatworld leave etc.
             if(game.status == Game.GameStatus.AWAITING_START) {
                 game.players.remove(playerQuit);
                 WorldEater.sendBroadcast("§cA player in queue left.");
@@ -96,6 +97,10 @@ public final class Events implements Listener {
                     game.stop(true);
                 }
             }
+        } else if(game.spectators.contains(playerQuit)) {
+            playerQuit.setGameMode(GameMode.SURVIVAL);
+            game.spectators.remove(playerQuit);
+            WorldEater.sendBroadcast("Spectator §e" + playerQuit.getName() + "§7 left.");
         }
     }
 
