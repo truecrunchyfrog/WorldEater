@@ -19,6 +19,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
+import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
 import java.io.IOException;
@@ -56,7 +57,7 @@ public class Game {
         instances.add(this);
         gameId = ThreadLocalRandom.current().nextInt((int) Math.pow(10, 3), (int) Math.pow(10, 4));
 
-        players = new ArrayList<Player>();
+        players = new ArrayList<>();
 
         eventListener = new Events(this);
         WorldEater.getPlugin().getServer().getPluginManager().registerEvents(eventListener, WorldEater.getPlugin());
@@ -77,9 +78,7 @@ public class Game {
             bukkitTasks.add(new BukkitRunnable() {
                 @Override
                 public void run() {
-                    for(Player eachPlayer : players) {
-                        eachPlayer.playSound(eachPlayer, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 5, 5);
-                    }
+                    sendSound(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 5, 5);
                     sendGameMessage("§4[§c§l!§4] §6Game will start in §c" + finalI + " seconds.");
                 }
             }.runTaskLater(WorldEater.getPlugin(), 20L * (startDelay - i)));
@@ -90,11 +89,11 @@ public class Game {
             public void run() {
                 status = GameStatus.RUNNING;
 
-                if(!debug && players.size() < 2) {
+                if((!debug || players.size() == 0) && players.size() < 2) {
                     players = null;
                     stopHard(false);
 
-                    WorldEater.sendBroadcast("Not enough players joined. Game aborted.");
+                    WorldEater.sendBroadcast("§cNot enough players joined. Game aborted.");
                     return;
                 }
 
@@ -141,16 +140,13 @@ public class Game {
 
                 sendGameMessage("Cloning chunk...");
 
-                for(int x = 0; x < 16; x++) {
-                    for(int z = 0; z < 16; z++) {
+                for(int x = 0; x < 16; x++)
+                    for(int z = 0; z < 16; z++)
                         for(int y = -64; y <= normalWorld.getHighestBlockYAt(x, z); y++) {
                             Material sourceMaterial = normalChunk.getBlock(x, y, z).getType();
-                            if(!sourceMaterial.isAir()) {
+                            if(!sourceMaterial.isAir())
                                 chunk.getBlock(x, y, z).setType(sourceMaterial);
-                            }
                         }
-                    }
-                }
 
                 WorldEater.getPlugin().getServer().unloadWorld(normalWorld, false);
 
@@ -166,8 +162,7 @@ public class Game {
 
                 world.setPVP(false);
 
-                sendGameMessage("Game world created!");
-                sendGameMessage("Moving players...");
+                sendGameMessage("Preparing players...");
 
                 for(Player eachPlayer : players) {
                     eachPlayer.teleport(getSpawnLocation());
@@ -181,16 +176,13 @@ public class Game {
                     }
                     t.addEntry(eachPlayer.getName());
 
-                    eachPlayer.setGameMode(GameMode.ADVENTURE);
-                    eachPlayer.setHealth(20);
-                    eachPlayer.setFoodLevel(20);
-                    eachPlayer.setLevel(0);
-
-                    eachPlayer.getInventory().clear();
-
-                    for(PotionEffect potionEffect : eachPlayer.getActivePotionEffects()) {
-                        eachPlayer.removePotionEffect(potionEffect.getType());
+                    try {
+                        new PlayerState(eachPlayer).saveState();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
+
+                    PlayerState.prepareDefault(eachPlayer);
                 }
 
                 hider = (Player) players.toArray()[(int) (players.size() * Math.random())];
@@ -232,11 +224,9 @@ public class Game {
                                     if(finalI % 5 == 0)
                                         sendGameMessage("§eSeekers are released in " + timeLeftString + ".");
 
-                                    for(Player eachPlayer : players) {
-                                        if(!eachPlayer.equals(hider)) {
+                                    for(Player eachPlayer : players)
+                                        if(!eachPlayer.equals(hider))
                                             eachPlayer.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 6, 0);
-                                        }
-                                    }
                                 }
                             }.runTaskLater(WorldEater.getPlugin(), 20 * (2 * 60 - i)));
                         }
@@ -250,26 +240,21 @@ public class Game {
                                 sendGameMessage("§c§lSEEKERS HAVE BEEN RELEASED!");
                                 frozenPlayers.clear();
 
+                                sendSound(Sound.BLOCK_ANVIL_LAND, 2, 2);
                                 for(Player eachPlayer : players) {
                                     if(!eachPlayer.equals(hider)) {
-                                        eachPlayer.setAllowFlight(false);
-                                        eachPlayer.setFlying(false);
-                                        eachPlayer.setInvisible(false);
+                                        PlayerState.prepareDefault(eachPlayer);
                                         eachPlayer.teleport(getSpawnLocation());
-                                        eachPlayer.setGameMode(GameMode.SURVIVAL);
                                     }
-                                    eachPlayer.playSound(eachPlayer, Sound.BLOCK_ANVIL_LAND, 2, 2);
                                 }
 
                                 sendGameMessage("§c(!) Starting from the top of the island to the bottom, each layer of blocks will be removed at an exponential rate.");
 
                                 int startY = 0;
 
-                                for(int x = 0; x < 16; x++) {
-                                    for(int z = 0; z < 16; z++) {
+                                for(int x = 0; x < 16; x++)
+                                    for(int z = 0; z < 16; z++)
                                         startY = Math.max(startY, world.getHighestBlockYAt(x, z));
-                                    }
-                                }
 
                                 long progress = 0;
 
@@ -279,15 +264,11 @@ public class Game {
                                     bukkitTasks.add(new BukkitRunnable() {
                                         @Override
                                         public void run() {
-                                            for(Player eachPlayer : players) {
-                                                eachPlayer.playSound(eachPlayer, Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
-                                            }
+                                            sendSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
 
-                                            for(int x = 0; x < 16; x++) {
-                                                for(int z = 0; z < 16; z++) {
+                                            for(int x = 0; x < 16; x++)
+                                                for(int z = 0; z < 16; z++)
                                                     world.setBlockData(chunk.getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
-                                                }
-                                            }
                                         }
                                     }.runTaskLater(WorldEater.getPlugin(), progress));
                                 }
@@ -307,16 +288,12 @@ public class Game {
                                                     case 10:
                                                         sendGameMessage("§eThe world border will shrink in §c30§e seconds!");
 
-                                                        for(Player eachPlayer : players) {
-                                                            eachPlayer.playSound(eachPlayer, Sound.ITEM_GOAT_HORN_SOUND_6, 4, 4);
-                                                        }
+                                                        sendSound(Sound.ITEM_GOAT_HORN_SOUND_6, 4, 4);
 
                                                         bukkitTasks.add(new BukkitRunnable() {
                                                             @Override
                                                             public void run() {
-                                                                for(Player eachPlayer : players) {
-                                                                    eachPlayer.playSound(eachPlayer, Sound.ITEM_GOAT_HORN_SOUND_6, 5, 5);
-                                                                }
+                                                                sendSound(Sound.ITEM_GOAT_HORN_SOUND_6, 5, 5);
 
                                                                 world.getWorldBorder().setSize(32);
                                                                 sendGameMessage("§eWorld border has shrunk!");
@@ -326,15 +303,13 @@ public class Game {
                                                     case 5:
                                                         sendGameMessage("§8<§k-§8> §4§lSUDDEN DEATH! §cExploding horses will summon randomly and approach players.");
 
-                                                        for(Player eachPlayer : players) {
-                                                            eachPlayer.playSound(eachPlayer, Sound.ENTITY_HORSE_ANGRY, 5, 5);
-                                                        }
+                                                        sendSound(Sound.ENTITY_HORSE_ANGRY, 5, 5);
 
                                                         for(int i = 0; i < 50; i++) {
                                                             bukkitTasks.add(new BukkitRunnable() {
                                                                 @Override
                                                                 public void run() {
-                                                                    if (Math.random() * 10 < 2) {
+                                                                    if(Math.random() * 10 < 2) {
                                                                         Player unluckyPlayer = (Player) players.toArray()[(int) (players.size() * Math.random())];
 
                                                                         Location targetLocation = unluckyPlayer.getLocation();
@@ -382,11 +357,15 @@ public class Game {
     }
 
     protected void sendGameMessage(String s) {
-        if(players != null) {
-            for(Player eachPlayer : players) {
+        if(players != null)
+            for(Player eachPlayer : players)
                 WorldEater.sendMessage(eachPlayer, s);
-            }
-        }
+    }
+
+    protected void sendSound(Sound sound, float v, float v1) {
+        if(players != null)
+            for(Player eachPlayer : players)
+                eachPlayer.playSound(eachPlayer, sound, v, v1);
     }
 
     protected void stopHard(boolean wait) {
@@ -410,20 +389,10 @@ public class Game {
             @Override
             public void run() {
                 if(world != null) {
-                    sendGameMessage("Moving players from world...");
+                    sendGameMessage("Restoring players...");
 
-                    for(Player player : world.getPlayers()) {
-                        player.setGameMode(GameMode.SURVIVAL);
-                        player.getInventory().clear();
-
-                        player.setHealth(20);
-                        player.setFoodLevel(20);
-                        player.setLevel(0);
-
-                        player.setInvulnerable(false);
-                        player.setInvisible(false);
-                        player.teleport(new Location(WorldEater.getPlugin().getServer().getWorlds().get(0), 0, 0, 0));
-                    }
+                    for(Player player : world.getPlayers())
+                        PlayerState.restoreState(player);
 
                     sendGameMessage("Unloading world...");
 
@@ -436,9 +405,8 @@ public class Game {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-
-                    sendGameMessage("Goodbye!");
                 }
+                sendGameMessage("Goodbye!");
 
                 world = null;
                 players = null;
@@ -458,10 +426,10 @@ public class Game {
 
         stopHard(true);
 
-        for(Player eachPlayer : players) {
+        sendSound(Sound.BLOCK_BELL_USE, 3, 3);
+
+        for(Player eachPlayer : players)
             eachPlayer.sendTitle((!hiderWins && !eachPlayer.equals(hider)) || (hiderWins && eachPlayer.equals(hider)) ? "§a§lVictory!" : "§c§lLost!", !hiderWins ? "§eThe seekers won the game." : "§eThe hider won the game.", 0, 20 * 6, 0);
-            eachPlayer.playSound(eachPlayer, Sound.BLOCK_BELL_USE, 3, 3);
-        }
 
         sendGameMessage("§aThe game has ended. Thanks for playing.");
 
@@ -476,9 +444,7 @@ public class Game {
             WorldEater.sendMessage(player, "Joining game as spectator, please wait...");
             player.setGameMode(GameMode.SPECTATOR);
             player.teleport(getSpawnLocation());
-            for(Player eachPlayer : players) {
-                eachPlayer.playSound(eachPlayer, Sound.ENTITY_CAT_HISS, 2, 2);
-            }
+            sendSound(Sound.ENTITY_CAT_HISS, 2, 2);
             sendGameMessage("§e" + player.getName() + "§7 is watching as a spectator.");
             spectators.add(player);
             return;
@@ -507,10 +473,26 @@ public class Game {
     protected void playerLeave(Player player) {
         if(players.contains(player)) {
             players.remove(player);
-            WorldEater.sendBroadcast("Player "); // todo
+            PlayerState.restoreState(player);
+
+            if(status == GameStatus.AWAITING_START) {
+                WorldEater.sendBroadcast("§cA player in queue left.");
+            } else if(status == GameStatus.RUNNING) {
+                sendGameMessage("§c" + player.getName() + " quit the game!");
+
+                if(player.equals(hider)) {
+                    sendGameMessage("§cThe hider has left the game, so the game is over.");
+                    stop(false);
+                } else if(players.size() == 1) { // Only 1 player still in game (hider).
+                    sendGameMessage("§cThere is no seeker remaining, so the game is over.");
+                    stop(true);
+                }
+            }
         } else if(spectators.contains(player)) {
             spectators.remove(player);
-            WorldEater.sendBroadcast("§aThe game has been filled!");
+            PlayerState.restoreState(player);
+
+            WorldEater.sendBroadcast("Spectator §e" + player.getName() + "§7 left.");
         }
     }
 

@@ -16,6 +16,7 @@ public final class WorldEater extends JavaPlugin {
 
         getCommand("eatworld").setExecutor(new EatWorld());
 
+        WorldEater.getPlugin().getServer().getPluginManager().registerEvents(new Events(), WorldEater.getPlugin());
         getLogger().info("WorldEater plugin has been initialized.");
     }
 

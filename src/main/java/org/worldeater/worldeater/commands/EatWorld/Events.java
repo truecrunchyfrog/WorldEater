@@ -1,11 +1,11 @@
 package org.worldeater.worldeater.commands.EatWorld;
 
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -24,7 +24,7 @@ public final class Events implements Listener {
 
     @EventHandler
     private void onPlayerMove(PlayerMoveEvent e) {
-        if(game.frozenPlayers != null && game.frozenPlayers.contains(e.getPlayer()) && e.getFrom() != e.getTo())
+        if(game.frozenPlayers.contains(e.getPlayer()) && e.getFrom() != e.getTo())
             e.setCancelled(true); // Prevent frozen player from moving.
     }
 
@@ -80,33 +80,19 @@ public final class Events implements Listener {
 
     @EventHandler
     private void onPlayerQuit(PlayerQuitEvent e) {
-        Player playerQuit = e.getPlayer();
-        if(game.players.contains(playerQuit)) { // TODO Fix better player cleaning/restoring methods. On quit, leave world, /eatworld leave etc.
-            if(game.status == Game.GameStatus.AWAITING_START) {
-                game.players.remove(playerQuit);
-                WorldEater.sendBroadcast("§cA player in queue left.");
-            } else if(game.status == Game.GameStatus.RUNNING) {
-                game.players.remove(playerQuit);
-                game.sendGameMessage("§c" + playerQuit.getName() + " quit the game!");
-
-                if(playerQuit.equals(game.hider)) {
-                    game.sendGameMessage("§cThe hider has left the game, so the game is over.");
-                    game.stop(false);
-                } else if(game.players.size() == 1) { // Only 1 player still in game.
-                    game.sendGameMessage("§cThere is no seeker remaining, so the game is over.");
-                    game.stop(true);
-                }
-            }
-        } else if(game.spectators.contains(playerQuit)) {
-            playerQuit.setGameMode(GameMode.SURVIVAL);
-            game.spectators.remove(playerQuit);
-            WorldEater.sendBroadcast("Spectator §e" + playerQuit.getName() + "§7 left.");
-        }
+        if(game.players.contains(e.getPlayer()) || game.spectators.contains(e.getPlayer()))
+            game.playerLeave(e.getPlayer());
     }
 
     @EventHandler
     private void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
-        if(game.players != null && game.players.contains(e.getPlayer()) && !e.getPlayer().getWorld().equals(game.world))
+        if(game.players.contains(e.getPlayer()) && !e.getPlayer().getWorld().equals(game.world))
             e.getPlayer().teleport(game.getSpawnLocation());
+    }
+
+    @EventHandler
+    private void onBlockBreak(BlockBreakEvent e) {
+        if(game.players.contains(e.getPlayer()) && game.status == Game.GameStatus.AWAITING_START)
+            e.setCancelled(true);
     }
 }
