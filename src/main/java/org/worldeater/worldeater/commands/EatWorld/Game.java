@@ -170,6 +170,7 @@ public class Game {
                 teamSelectionScreen.hiders.add(getRandomPlayer()); // Set random hider.
                 teamSelectionScreen.seekers.addAll(players); // Add all players as seekers.
                 teamSelectionScreen.seekers.remove(teamSelectionScreen.hiders.get(0)); // Remove hider from seeker list.
+                teamSelectionScreen.update();
 
                 for(Player eachPlayer : players) {
                     eachPlayer.teleport(getSpawnLocation());
@@ -199,10 +200,10 @@ public class Game {
                     public void run() {
                         hiders = teamSelectionScreen.hiders;
 
-                        if(hiders.isEmpty()) {
+                        if(hiders.isEmpty() && !debug) {
                             sendGameMessage("No one wanted to play as a hider! Picking a random hider.");
                             hiders.add(getRandomPlayer());
-                        } else if(players.size() == hiders.size()) {
+                        } else if(players.size() == hiders.size() && !debug) {
                             sendGameMessage("No one wanted to play as a seeker! Picking a random seeker.");
                             hiders.remove(getRandomPlayer());
                         }

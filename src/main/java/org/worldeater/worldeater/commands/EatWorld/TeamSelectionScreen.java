@@ -8,12 +8,12 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         WorldEater.getPlugin().getServer().getPluginManager().registerEvents(this, WorldEater.getPlugin());
     }
 
-    private void update() {
+    protected void update() {
         inventory.clear();
 
         for(int i = 0; i < 9; i++)
@@ -42,10 +42,10 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
             inventory.setItem(i, getCustomItem("§a§lHIDERS", Material.LIME_STAINED_GLASS_PANE, Collections.singletonList("§ePlay as a hider.")));
 
         for(Player seeker : seekers)
-            inventory.setItem(seekers.indexOf(seeker), getPlayerSkull(seeker, "§8[§cSeeker§8] §e" + seeker.getName()));
+            inventory.setItem(seekers.indexOf(seeker) + 1, getPlayerSkull(seeker, "§8[§cSeeker§8] §e" + seeker.getName()));
 
         for(Player hider : hiders)
-            inventory.setItem(hiders.indexOf(hider) + 9, getPlayerSkull(hider, "§8[§cHider§8] §e" + hider.getName()));
+            inventory.setItem(hiders.indexOf(hider) + 9 + 1, getPlayerSkull(hider, "§8[§aHider§8] §e" + hider.getName()));
     }
 
     public void stop() {
@@ -86,6 +86,7 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
             Player player = (Player) e.getWhoClicked();
 
             if(seekers.contains(player) || hiders.contains(player)) {
+                e.setCancelled(true);
                 int slot = e.getSlot();
 
                 if(slot < 9 && hiders.contains(player)) { // Clicked seeker slot: move to seeker.
@@ -106,11 +107,12 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         if(e.getPlayer() instanceof Player) {
             Player player = (Player) e.getPlayer();
             if(seekers.contains(player) || hiders.contains(player))
-                player.openInventory(inventory);
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        player.openInventory(inventory);
+                    }
+                }.runTaskLater(WorldEater.getPlugin(), 10);
         }
-    }
-
-    @EventHandler
-    private void onPlayerQuit(PlayerQuitEvent e) {
     }
 }

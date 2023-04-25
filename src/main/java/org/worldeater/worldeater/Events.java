@@ -7,6 +7,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
 public class Events implements Listener {
     @EventHandler
     private void onPlayerJoin(PlayerJoinEvent e) {
-        PlayerState.restoreState(e.getPlayer()); // Checks if saved player state exists, then restores player to that state.
+        try {
+            PlayerState.restoreState(e.getPlayer()); // Checks if saved player state exists, then restores player to that state.
+        } catch(IllegalArgumentException err) {
+            err.printStackTrace();
+        }
     }
 }
