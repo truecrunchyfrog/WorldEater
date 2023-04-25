@@ -10,6 +10,7 @@ import org.bukkit.potion.PotionEffect;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -39,6 +40,7 @@ public class PlayerState {
             throw new Error("Cannot delete UUID " + playerId + " state file.");
     }
 
+    @SuppressWarnings("unchecked")
     public static void restoreState(Player player) {
         if(!player.isOnline()) return;
 
@@ -47,13 +49,13 @@ public class PlayerState {
 
         YamlConfiguration config = YamlConfiguration.loadConfiguration(stateFile);
 
-        player.getInventory().setContents((ItemStack[]) Objects.requireNonNull(config.get("inventory.contents")));
-        player.getInventory().setArmorContents((ItemStack[]) Objects.requireNonNull(config.get("inventory.armor")));
+        player.getInventory().setContents(((List<ItemStack>) Objects.requireNonNull(config.get("inventory.contents"))).toArray(new ItemStack[0]));
+        player.getInventory().setArmorContents(((List<ItemStack>) Objects.requireNonNull(config.get("inventory.armor"))).toArray(new ItemStack[0]));
         player.getInventory().setItemInOffHand((ItemStack) Objects.requireNonNull(config.get("inventory.off_hand")));
 
         player.setHealth(config.getDouble("health"));
         player.setFoodLevel(config.getInt("food_level"));
-        player.setExp((float) Objects.requireNonNull(config.get("experience")));
+        player.setExp(((float) config.getDouble("experience")));
         player.setGameMode(GameMode.valueOf(config.getString("game_mode")));
 
         deletePlayerStateFile(player.getUniqueId());
@@ -91,7 +93,7 @@ public class PlayerState {
     private YamlConfiguration saveToConfig() {
         YamlConfiguration config = new YamlConfiguration();
 
-        config.set("uuid", playerUUID);
+        config.set("uuid", playerUUID.toString());
         config.set("inventory.contents", inventory.getContents());
         config.set("inventory.armor", inventory.getArmorContents());
         config.set("inventory.off_hand", inventory.getItemInOffHand());

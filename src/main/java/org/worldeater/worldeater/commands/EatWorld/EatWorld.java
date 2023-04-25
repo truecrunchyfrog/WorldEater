@@ -4,8 +4,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.worldeater.worldeater.WorldEater;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 
 public class EatWorld implements CommandExecutor {

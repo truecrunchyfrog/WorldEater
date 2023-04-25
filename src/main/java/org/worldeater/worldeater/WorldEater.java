@@ -5,6 +5,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.worldeater.worldeater.commands.EatWorld.EatWorld;
 
+import java.util.Objects;
+
 public final class WorldEater extends JavaPlugin {
 
     private static WorldEater plugin;
@@ -14,9 +16,9 @@ public final class WorldEater extends JavaPlugin {
     public void onEnable() {
         plugin = this;
 
-        getCommand("eatworld").setExecutor(new EatWorld());
+        Objects.requireNonNull(getCommand("eatworld")).setExecutor(new EatWorld());
 
-        WorldEater.getPlugin().getServer().getPluginManager().registerEvents(new Events(), WorldEater.getPlugin());
+        getServer().getPluginManager().registerEvents(new Events(), this);
         getLogger().info("WorldEater plugin has been initialized.");
     }
 

@@ -38,7 +38,7 @@ public final class Events implements Listener {
                 player.spigot().respawn();
                 player.setBedSpawnLocation(realSpawn);
 
-                if(!player.equals(game.hider)) {
+                if(!game.hiders.contains(player)) {
                     player.setAllowFlight(true);
                     player.setFlying(true);
                     player.setInvulnerable(true);
@@ -72,9 +72,8 @@ public final class Events implements Listener {
                 }
             }, 2);
 
-            if(player.equals(game.hider)) {
+            if(game.hiders.contains(player))
                 game.stop(false); // Hider died and lost.
-            }
         }
     }
 
@@ -87,7 +86,7 @@ public final class Events implements Listener {
     @EventHandler
     private void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
         if(game.players.contains(e.getPlayer()) && !e.getPlayer().getWorld().equals(game.world))
-            e.getPlayer().teleport(game.getSpawnLocation());
+            game.playerLeave(e.getPlayer());
     }
 
     @EventHandler
