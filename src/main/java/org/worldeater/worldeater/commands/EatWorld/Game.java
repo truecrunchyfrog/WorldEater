@@ -246,6 +246,7 @@ public class Game {
                                     bukkitTasks.add(new BukkitRunnable() {
                                         @Override
                                         public void run() {
+                                            sendSound(Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 1, 1);
                                             String timeLeftString = (finalI >= 60 ? "§c" + (finalI / 60) + "§em " : "") + "§c" + finalI % 60 + "§es";
         
                                             if(finalI % 5 == 0)

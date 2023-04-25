@@ -110,9 +110,9 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        player.openInventory(inventory);
+                        player.openInventory(e.getInventory());
                     }
-                }.runTaskLater(WorldEater.getPlugin(), 10);
+                }.runTaskLater(WorldEater.getPlugin(), 5);
         }
     }
 }

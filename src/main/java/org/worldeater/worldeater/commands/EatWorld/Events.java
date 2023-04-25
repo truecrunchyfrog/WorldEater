@@ -86,7 +86,7 @@ public final class Events implements Listener {
     @EventHandler
     private void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
         if(game.players.contains(e.getPlayer()) && !e.getPlayer().getWorld().equals(game.world))
-            game.playerLeave(e.getPlayer());
+            e.getPlayer().teleport(game.getSpawnLocation());
     }
 
     @EventHandler
