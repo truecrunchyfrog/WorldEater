@@ -6,7 +6,7 @@ commands:
   eatworld:
     description: Eat this world
     usage: /eatworld <join|leave|create|stop>
-permissions:
-  operator:
-    default: true
-    description: Operator
+#permissions:
+#  operator:
+#    default: true
+#    description: Operator

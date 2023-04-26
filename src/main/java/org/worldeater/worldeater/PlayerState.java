@@ -22,6 +22,9 @@ public class PlayerState {
     private final float experience;
     private final Location location;
     private final GameMode gameMode;
+    private final boolean allowFlight;
+    private final boolean invisible;
+    private final boolean invulnerable;
 
     private static File getPlayerStateDir() {
         File playerStateDir = new File(WorldEater.getPlugin().getDataFolder(), "playerStates");
@@ -58,6 +61,11 @@ public class PlayerState {
         player.setExp(((float) config.getDouble("experience")));
         player.setGameMode(GameMode.valueOf(config.getString("game_mode")));
 
+        player.setFlying(false);
+        player.setAllowFlight(config.getBoolean("allow_flight"));
+        player.setInvisible(config.getBoolean("invisible"));
+        player.setInvulnerable(config.getBoolean("invulnerable"));
+
         deletePlayerStateFile(player.getUniqueId());
     }
 
@@ -71,13 +79,12 @@ public class PlayerState {
         player.setGameMode(GameMode.SURVIVAL);
         player.setHealth(20);
         player.setFoodLevel(20);
-        player.setLevel(0);
+        player.setExp(0);
 
         player.getInventory().clear();
 
-        for(PotionEffect potionEffect : player.getActivePotionEffects()) {
+        for(PotionEffect potionEffect : player.getActivePotionEffects())
             player.removePotionEffect(potionEffect.getType());
-        }
     }
 
     public PlayerState(Player player) {
@@ -88,6 +95,9 @@ public class PlayerState {
         experience = player.getExp();
         location = player.getLocation();
         gameMode = player.getGameMode();
+        allowFlight = player.getAllowFlight();
+        invisible = player.isInvisible();
+        invulnerable = player.isInvulnerable();
     }
 
     private YamlConfiguration saveToConfig() {
@@ -102,6 +112,9 @@ public class PlayerState {
         config.set("experience", experience);
         config.set("location", location);
         config.set("game_mode", gameMode.name());
+        config.set("allow_flight", allowFlight);
+        config.set("invisible", invisible);
+        config.set("invulnerable", invulnerable);
 
         return config;
     }

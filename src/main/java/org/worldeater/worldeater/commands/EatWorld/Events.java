@@ -10,6 +10,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.world.SpawnChangeEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -72,8 +73,15 @@ public final class Events implements Listener {
                 }
             }, 2);
 
-            if(game.hiders.contains(player))
-                game.stop(false); // Hider died and lost.
+            if(game.hiders.contains(player)) {
+                if(game.hiders.size() == 1) {
+                    game.stop(false); // A hider died and lost.
+                } else {
+                    game.hiders.remove(player);
+                    game.players.remove(player);
+                    game.playerJoin(player, true); // Make dead player spectator.
+                }
+            }
         }
     }
 
@@ -91,7 +99,7 @@ public final class Events implements Listener {
 
     @EventHandler
     private void onBlockBreak(BlockBreakEvent e) {
-        if(game.players.contains(e.getPlayer()) && game.status == Game.GameStatus.AWAITING_START)
+        if(game.players.contains(e.getPlayer()) && (game.status == Game.GameStatus.AWAITING_START || game.frozenPlayers.contains(e.getPlayer())))
             e.setCancelled(true);
     }
 }

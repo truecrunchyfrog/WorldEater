@@ -2,6 +2,7 @@ package org.worldeater.worldeater.commands.EatWorld;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -22,7 +23,7 @@ import java.util.List;
 
 public class TeamSelectionScreen implements InventoryHolder, Listener {
     private final Inventory inventory;
-    protected ArrayList<Player> seekers, hiders;
+    protected final ArrayList<Player> seekers, hiders;
 
     protected TeamSelectionScreen() {
         inventory = Bukkit.createInventory(this, 18, "Choose a team to play in.");
@@ -49,9 +50,17 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
     }
 
     public void stop() {
+        inventory.clear();
         HandlerList.unregisterAll(this);
-        seekers = null;
-        hiders = null;
+
+        for(Player seeker : seekers)
+            seeker.closeInventory();
+
+        for(Player hider : hiders)
+            hider.closeInventory();
+
+        seekers.clear();
+        hiders.clear();
     }
 
     private ItemStack getCustomItem(String label, Material material, List<String> lore) {
@@ -93,11 +102,12 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
                     hiders.remove(player);
                     seekers.add(player);
                     update();
-                } else if(slot >= 9 && seekers.contains(player)) { // Clicked hider slot: move to hider.
+                } else if(slot >= 9 && slot < 18 && seekers.contains(player)) { // Clicked hider slot: move to hider.
                     seekers.remove(player);
                     hiders.add(player);
                     update();
-                }
+                } else return;
+                player.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0.5f);
             }
         }
     }

@@ -4,11 +4,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.worldeater.worldeater.WorldEater;
 
-import javax.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class EatWorld implements CommandExecutor {
     @Override
@@ -29,14 +28,12 @@ public class EatWorld implements CommandExecutor {
                 }
 
                 if(strings.length < 2) {
-                    if(commandSender instanceof Player) {
-                        for(Game eachGame : gameInstances) {
+                    if(commandSender instanceof Player)
+                        for(Game eachGame : gameInstances)
                             if(eachGame.world == ((Player) commandSender).getWorld()) {
                                 autoSelectedGame = eachGame;
                                 break;
                             }
-                        }
-                    }
 
                     if(autoSelectedGame == null) {
                         WorldEater.sendMessage(commandSender, "§cNo game chosen! Please provide a game ID together with the command: §e/eatworld stop <ID>§c, or §e/eatworld stop all§c to stop all games. Alternatively, run the game when in a game.");
@@ -113,13 +110,12 @@ public class EatWorld implements CommandExecutor {
 
                 for(Game eachGame : gameInstances) {
                     if(eachGame.players.contains((Player) commandSender)) {
-                        WorldEater.sendMessage(commandSender, "§cYou are already in another game.");
+                        WorldEater.sendMessage(commandSender, "§cYou are already in a game.");
                         return true;
                     }
 
-                    if(joinGame == null && eachGame.gameId == gameId) {
+                    if(joinGame == null && eachGame.gameId == gameId)
                         joinGame = eachGame;
-                    }
                 }
 
                 if(joinGame == null) {
@@ -163,6 +159,23 @@ public class EatWorld implements CommandExecutor {
                     game.debug = true;
                     WorldEater.sendMessage(commandSender, "§3Debug mode enabled.");
                 }
+            }  else if(strings[0].equalsIgnoreCase("list")) {
+                if(!commandSender.isOp()) {
+                    WorldEater.sendMessage(commandSender, "§cOnly operators may list games.");
+                    return true;
+                }
+
+                ArrayList<Game> gameInstances = Game.getInstances();
+
+                if(gameInstances.size() == 0) {
+                    WorldEater.sendMessage(commandSender, "§cThere are no running games!");
+                    return true;
+                }
+
+                WorldEater.sendMessage(commandSender, "§aListing all §e" + gameInstances.size() + "§a games of WorldEater...");
+
+                for(Game eachGame : gameInstances)
+                    WorldEater.sendMessage(commandSender, "§3§l[ §3#" + eachGame.gameId + " §3§l]§e " + eachGame.players.size() + " players §6|§e Status: §o" + eachGame.status.name() + (eachGame.debug ? " §9(debugging mode)" : ""));
             } else {
                 WorldEater.sendMessage(commandSender, "§cInvalid WorldEater command: §4§l" + strings[0] + "§c!");
                 return true;
@@ -171,7 +184,7 @@ public class EatWorld implements CommandExecutor {
             return true;
         }
 
-        WorldEater.sendMessage(commandSender, "§cRun this command with an action! (join, leave, create, stop)");
+        WorldEater.sendMessage(commandSender, "§cRun this command with an action! §o(join, leave, create, stop, list)");
         return true;
     }
 }
