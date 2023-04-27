@@ -7,7 +7,6 @@ import org.bukkit.entity.Player;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class EatWorld implements CommandExecutor {
     @Override
@@ -158,6 +157,9 @@ public class EatWorld implements CommandExecutor {
                 if(strings.length > 1 && strings[1].equalsIgnoreCase("debug")) {
                     game.debug = true;
                     WorldEater.sendMessage(commandSender, "§3Debug mode enabled.");
+
+                    if(commandSender instanceof Player)
+                        game.playerJoin((Player) commandSender, false);
                 }
             }  else if(strings[0].equalsIgnoreCase("list")) {
                 if(!commandSender.isOp()) {

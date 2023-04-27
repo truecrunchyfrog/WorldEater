@@ -2,6 +2,7 @@ package org.worldeater.worldeater.commands.EatWorld;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,13 +21,15 @@ import org.worldeater.worldeater.WorldEater;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class TeamSelectionScreen implements InventoryHolder, Listener {
     private final Inventory inventory;
     protected final ArrayList<Player> seekers, hiders;
+    private int timeLeft = 0;
 
     protected TeamSelectionScreen() {
-        inventory = Bukkit.createInventory(this, 18, "Choose a team to play in.");
+        inventory = Bukkit.createInventory(this, 27, "Choose a team to play in.");
         seekers = new ArrayList<>();
         hiders = new ArrayList<>();
 
@@ -42,11 +45,23 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         for(int i = 9; i < 18; i++)
             inventory.setItem(i, getCustomItem("§a§lHIDERS", Material.LIME_STAINED_GLASS_PANE, Collections.singletonList("§ePlay as a hider.")));
 
+        for(int i = 18; i < 27; i++)
+            inventory.setItem(i, getCustomItem("§r", Material.GRAY_STAINED_GLASS_PANE, null));
+
         for(Player seeker : seekers)
             inventory.setItem(seekers.indexOf(seeker) + 1, getPlayerSkull(seeker, "§8[§cSeeker§8] §e" + seeker.getName()));
 
         for(Player hider : hiders)
             inventory.setItem(hiders.indexOf(hider) + 9 + 1, getPlayerSkull(hider, "§8[§aHider§8] §e" + hider.getName()));
+
+        ItemStack clock = getCustomItem("§c" + timeLeft + "§e seconds until teams are confirmed.", Material.CLOCK, null);
+        clock.setAmount(timeLeft);
+        inventory.setItem(18, clock);
+    }
+
+    protected void setTimeLeft(int seconds) {
+        timeLeft = seconds;
+        update();
     }
 
     public void stop() {
@@ -63,7 +78,7 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         hiders.clear();
     }
 
-    private ItemStack getCustomItem(String label, Material material, List<String> lore) {
+    private static ItemStack getCustomItem(String label, Material material, List<String> lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         assert meta != null;
@@ -73,7 +88,7 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         return item;
     }
 
-    private ItemStack getPlayerSkull(Player player, String label) {
+    private static ItemStack getPlayerSkull(OfflinePlayer player, String label) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
         assert skullMeta != null;

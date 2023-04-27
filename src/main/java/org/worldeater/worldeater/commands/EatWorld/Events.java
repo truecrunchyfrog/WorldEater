@@ -2,19 +2,26 @@ package org.worldeater.worldeater.commands.EatWorld;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.world.SpawnChangeEvent;
+import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.worldeater.worldeater.WorldEater;
+
+import java.util.Objects;
 
 public final class Events implements Listener {
     private final Game game;
@@ -100,6 +107,24 @@ public final class Events implements Listener {
     @EventHandler
     private void onBlockBreak(BlockBreakEvent e) {
         if(game.players.contains(e.getPlayer()) && (game.status == Game.GameStatus.AWAITING_START || game.frozenPlayers.contains(e.getPlayer())))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    private void onInventoryClick(InventoryClickEvent e) {
+        if(e.getWhoClicked() instanceof Player && game.frozenPlayers.contains((Player) e.getWhoClicked()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    private void onPlayerDropItem(PlayerDropItemEvent e) {
+        if(game.frozenPlayers.contains(e.getPlayer()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    private void onPortalCreateEvent(PortalCreateEvent e) {
+        if(Objects.requireNonNull(e.getEntity()).getWorld() == game.world)
             e.setCancelled(true);
     }
 }

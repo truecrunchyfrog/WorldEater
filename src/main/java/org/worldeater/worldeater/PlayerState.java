@@ -50,6 +50,8 @@ public class PlayerState {
         File stateFile = getPlayerStateFile(player.getUniqueId());
         if(!stateFile.exists()) return;
 
+        prepareDefault(player);
+
         YamlConfiguration config = YamlConfiguration.loadConfiguration(stateFile);
 
         player.getInventory().setContents(((List<ItemStack>) Objects.requireNonNull(config.get("inventory.contents"))).toArray(new ItemStack[0]));
@@ -61,7 +63,6 @@ public class PlayerState {
         player.setExp(((float) config.getDouble("experience")));
         player.setGameMode(GameMode.valueOf(config.getString("game_mode")));
 
-        player.setFlying(false);
         player.setAllowFlight(config.getBoolean("allow_flight"));
         player.setInvisible(config.getBoolean("invisible"));
         player.setInvulnerable(config.getBoolean("invulnerable"));
@@ -80,6 +81,8 @@ public class PlayerState {
         player.setHealth(20);
         player.setFoodLevel(20);
         player.setExp(0);
+        player.setFireTicks(0);
+        player.setHealthScaled(false);
 
         player.getInventory().clear();
 
