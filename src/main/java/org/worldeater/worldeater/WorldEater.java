@@ -10,7 +10,7 @@ import java.util.Objects;
 public final class WorldEater extends JavaPlugin {
 
     private static WorldEater plugin;
-    public static String messagePrefix = "§8:: §2World§6Eater §8:: §7";
+    public static String messagePrefix = "§2§lWORLD§6§lEATER §8§l>> §7";
 
     @Override
     public void onEnable() {
@@ -19,6 +19,7 @@ public final class WorldEater extends JavaPlugin {
         Objects.requireNonNull(getCommand("eatworld")).setExecutor(new EatWorld());
 
         getServer().getPluginManager().registerEvents(new Events(), this);
+
         getLogger().info("WorldEater plugin has been initialized.");
     }
 

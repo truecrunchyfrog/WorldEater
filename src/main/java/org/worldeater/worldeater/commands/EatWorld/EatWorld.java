@@ -4,6 +4,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
@@ -108,7 +109,7 @@ public class EatWorld implements CommandExecutor {
                 Game joinGame = null;
 
                 for(Game eachGame : gameInstances) {
-                    if(eachGame.players.contains((Player) commandSender)) {
+                    if(eachGame.players.contains((Player) commandSender) || eachGame.spectators.contains((Player) commandSender)) {
                         WorldEater.sendMessage(commandSender, "§cYou are already in a game.");
                         return true;
                     }
@@ -152,14 +153,13 @@ public class EatWorld implements CommandExecutor {
 
                 WorldEater.sendMessage(commandSender, "Creating a game of WorldEater!");
 
-                Game game = new Game();
+                Game game = new Game(strings.length > 1 && strings[1].equalsIgnoreCase("debug"));
 
-                if(strings.length > 1 && strings[1].equalsIgnoreCase("debug")) {
-                    game.debug = true;
-                    WorldEater.sendMessage(commandSender, "§3Debug mode enabled.");
+                if(game.debug) {
+                    WorldEater.sendMessage(commandSender, "§3Debug mode enabled. Adding all online players.");
 
-                    if(commandSender instanceof Player)
-                        game.playerJoin((Player) commandSender, false);
+                    for(Player eachPlayer : WorldEater.getPlugin().getServer().getOnlinePlayers())
+                        game.playerJoin(eachPlayer, false);
                 }
             }  else if(strings[0].equalsIgnoreCase("list")) {
                 if(!commandSender.isOp()) {
@@ -178,6 +178,25 @@ public class EatWorld implements CommandExecutor {
 
                 for(Game eachGame : gameInstances)
                     WorldEater.sendMessage(commandSender, "§3§l[ §3#" + eachGame.gameId + " §3§l]§e " + eachGame.players.size() + " players §6|§e Status: §o" + eachGame.status.name() + (eachGame.debug ? " §9(debugging mode)" : ""));
+            } else if(strings[0].equalsIgnoreCase("resetme")) {
+                if(!(commandSender instanceof Player)) {
+                    WorldEater.sendMessage(commandSender, "§cOnly players can reset their state.");
+                    return true;
+                }
+
+
+                Player player = (Player) commandSender;
+
+                for(Game eachGame : Game.getInstances()) {
+                    if(eachGame.players.contains(player) || eachGame.spectators.contains(player)) {
+                        WorldEater.sendMessage(commandSender, "§cMust not be in a game.");
+                        return true;
+                    }
+                }
+
+                PlayerState.prepareNormal(player, false);
+                WorldEater.sendMessage(commandSender, "§aYour state has been reset.");
+                return true;
             } else {
                 WorldEater.sendMessage(commandSender, "§cInvalid WorldEater command: §4§l" + strings[0] + "§c!");
                 return true;

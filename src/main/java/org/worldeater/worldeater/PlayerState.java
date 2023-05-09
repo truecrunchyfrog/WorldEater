@@ -1,18 +1,21 @@
 package org.worldeater.worldeater;
 
 import org.bukkit.GameMode;
+import org.bukkit.GameRule;
 import org.bukkit.Location;
+import org.bukkit.advancement.Advancement;
+import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 public class PlayerState {
     private final UUID playerUUID;
@@ -25,13 +28,13 @@ public class PlayerState {
     private final boolean allowFlight;
     private final boolean invisible;
     private final boolean invulnerable;
+    private final String[] advancementCriteria;
 
     private static File getPlayerStateDir() {
         File playerStateDir = new File(WorldEater.getPlugin().getDataFolder(), "playerStates");
 
-        if(!playerStateDir.mkdir() && (!playerStateDir.exists() || !playerStateDir.isDirectory())) {
+        if(!playerStateDir.mkdir() && (!playerStateDir.exists() || !playerStateDir.isDirectory()))
             return null;
-        }
 
         return playerStateDir;
     }
@@ -50,7 +53,7 @@ public class PlayerState {
         File stateFile = getPlayerStateFile(player.getUniqueId());
         if(!stateFile.exists()) return;
 
-        prepareDefault(player);
+        prepareNormal(player, true);
 
         YamlConfiguration config = YamlConfiguration.loadConfiguration(stateFile);
 
@@ -67,15 +70,29 @@ public class PlayerState {
         player.setInvisible(config.getBoolean("invisible"));
         player.setInvulnerable(config.getBoolean("invulnerable"));
 
+        List<String> restoreCriteriaList = config.getStringList("advancement_criteria");
+
+        Iterator<Advancement> advancementIterator = WorldEater.getPlugin().getServer().advancementIterator();
+
+        boolean oldAnnouncementValue = Boolean.TRUE.equals(player.getWorld().getGameRuleValue(GameRule.ANNOUNCE_ADVANCEMENTS));
+        player.getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, false);
+
+        while(advancementIterator.hasNext()) {
+            AdvancementProgress progress = player.getAdvancementProgress(advancementIterator.next());
+            for(String criteria : progress.getRemainingCriteria())
+                if(restoreCriteriaList.contains(criteria))
+                    progress.awardCriteria(criteria);
+        }
+
+        if(oldAnnouncementValue)
+            player.getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, true);
+
         deletePlayerStateFile(player.getUniqueId());
     }
 
-    public static void prepareDefault(Player player) {
-        player.setInvulnerable(false);
-        player.setInvisible(false);
-
-        player.setAllowFlight(false);
-        player.setFlying(false);
+    private static void prepareDefault(Player player) {
+        if(player.isDead())
+            player.spigot().respawn();
 
         player.setGameMode(GameMode.SURVIVAL);
         player.setHealth(20);
@@ -88,6 +105,47 @@ public class PlayerState {
 
         for(PotionEffect potionEffect : player.getActivePotionEffects())
             player.removePotionEffect(potionEffect.getType());
+
+        Iterator<Advancement> advancementIterator = WorldEater.getPlugin().getServer().advancementIterator();
+
+        while(advancementIterator.hasNext()) {
+            AdvancementProgress progress = player.getAdvancementProgress(advancementIterator.next());
+            for(String criteria : progress.getAwardedCriteria())
+                progress.revokeCriteria(criteria); // Remove all advancement criteria, resetting the advancement state.
+        }
+
+        Scoreboard scoreboard = player.getScoreboard();
+        Team seekerTeam = scoreboard.getTeam("seekers");
+        Team hiderTeam = scoreboard.getTeam("hiders");
+
+        if(seekerTeam != null && seekerTeam.hasEntry(player.getName()))
+            seekerTeam.removeEntry(player.getName());
+
+        if(hiderTeam != null && hiderTeam.hasEntry(player.getName()))
+            hiderTeam.removeEntry(player.getName());
+    }
+
+    public static void prepareNormal(Player player, boolean inherit) {
+        if(inherit)
+            prepareDefault(player);
+
+        player.setInvulnerable(false);
+        player.setInvisible(false);
+
+        player.setAllowFlight(false);
+        player.setFlying(false);
+        player.setFallDistance(0);
+    }
+
+    public static void prepareIdle(Player player, boolean inherit) {
+        if(inherit)
+            prepareDefault(player);
+
+        player.setInvulnerable(true);
+        player.setInvisible(true);
+
+        player.setAllowFlight(true);
+        player.setFlying(true);
     }
 
     public PlayerState(Player player) {
@@ -101,6 +159,18 @@ public class PlayerState {
         allowFlight = player.getAllowFlight();
         invisible = player.isInvisible();
         invulnerable = player.isInvulnerable();
+
+        List<String> criteriaListTemp = new ArrayList<>();
+        Iterator<Advancement> advancementIterator = WorldEater.getPlugin().getServer().advancementIterator();
+
+        while(advancementIterator.hasNext())
+            criteriaListTemp.addAll(
+                    player.getAdvancementProgress( // Advancement progression for player.
+                            advancementIterator.next() // This advancement.
+                    ).getAwardedCriteria() // Get requirements for the advancement.
+            );
+
+        advancementCriteria = criteriaListTemp.toArray(new String[] {});
     }
 
     private YamlConfiguration saveToConfig() {
@@ -118,6 +188,7 @@ public class PlayerState {
         config.set("allow_flight", allowFlight);
         config.set("invisible", invisible);
         config.set("invulnerable", invulnerable);
+        config.set("advancement_criteria", advancementCriteria);
 
         return config;
     }

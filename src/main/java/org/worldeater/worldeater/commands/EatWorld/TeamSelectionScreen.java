@@ -16,24 +16,33 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 public class TeamSelectionScreen implements InventoryHolder, Listener {
     private final Inventory inventory;
-    protected final ArrayList<Player> seekers, hiders;
+    private final Game game;
+    protected final ArrayList<Player> seekers, hiders, readyPlayers;
     private int timeLeft = 0;
+    private final BukkitTask checkGameStateTask;
 
-    protected TeamSelectionScreen() {
+    protected TeamSelectionScreen(Game gameInstance) {
         inventory = Bukkit.createInventory(this, 27, "Choose a team to play in.");
+        game = gameInstance;
         seekers = new ArrayList<>();
         hiders = new ArrayList<>();
+        readyPlayers = new ArrayList<>();
 
         WorldEater.getPlugin().getServer().getPluginManager().registerEvents(this, WorldEater.getPlugin());
+
+        checkGameStateTask = Bukkit.getScheduler().runTaskTimer(WorldEater.getPlugin(), () -> {
+            if(game == null || game.status == Game.GameStatus.ENDED)
+                stop();
+        }, 0L, 20L);
     }
 
     protected void update() {
@@ -57,6 +66,11 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         ItemStack clock = getCustomItem("§c" + timeLeft + "§e seconds until teams are confirmed.", Material.CLOCK, null);
         clock.setAmount(timeLeft);
         inventory.setItem(18, clock);
+
+        int countNotReady = seekers.size() + hiders.size() - readyPlayers.size();
+        ItemStack readyUpButton = getCustomItem("§eReady to start? §c" + countNotReady + "§e remaining to get ready.", Material.GREEN_WOOL, null);
+        readyUpButton.setAmount(countNotReady);
+        inventory.setItem(26, readyUpButton);
     }
 
     protected void setTimeLeft(int seconds) {
@@ -76,6 +90,8 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
 
         seekers.clear();
         hiders.clear();
+
+        checkGameStateTask.cancel();
     }
 
     private static ItemStack getCustomItem(String label, Material material, List<String> lore) {
@@ -91,10 +107,14 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
     private static ItemStack getPlayerSkull(OfflinePlayer player, String label) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
+
         assert skullMeta != null;
+
         skullMeta.setOwningPlayer(player);
         skullMeta.setDisplayName(label);
+
         item.setItemMeta(skullMeta);
+
         return item;
     }
 
@@ -109,18 +129,25 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         if(e.getWhoClicked() instanceof Player) {
             Player player = (Player) e.getWhoClicked();
 
-            if(seekers.contains(player) || hiders.contains(player)) {
+            if(e.getInventory() == inventory && (seekers.contains(player) || hiders.contains(player))) {
                 e.setCancelled(true);
                 int slot = e.getSlot();
 
                 if(slot < 9 && hiders.contains(player)) { // Clicked seeker slot: move to seeker.
+                    readyPlayers.remove(player);
                     hiders.remove(player);
                     seekers.add(player);
                     update();
                 } else if(slot >= 9 && slot < 18 && seekers.contains(player)) { // Clicked hider slot: move to hider.
+                    readyPlayers.remove(player);
                     seekers.remove(player);
                     hiders.add(player);
                     update();
+                } else if(slot == 26 && !readyPlayers.contains(player)) {
+                    readyPlayers.add(player);
+                    update();
+                    player.playSound(player, Sound.ENTITY_VILLAGER_YES, 1, 0.5f);
+                    return;
                 } else return;
                 player.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0.5f);
             }
