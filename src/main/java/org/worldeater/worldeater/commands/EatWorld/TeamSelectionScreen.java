@@ -105,10 +105,6 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         return item;
     }
 
-    private static ItemStack getPlayerSkull(OfflinePlayer player, String label) {
-        return getPlayerSkull(player, label, false);
-    }
-
     private static ItemStack getPlayerSkull(OfflinePlayer player, String label, boolean glow) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
