@@ -2,6 +2,7 @@ name: WorldEater
 version: '${project.version}'
 main: org.worldeater.worldeater.WorldEater
 api-version: 1.19
+depend: [ ProtocolLib ]
 commands:
   eatworld:
     description: Eat this world

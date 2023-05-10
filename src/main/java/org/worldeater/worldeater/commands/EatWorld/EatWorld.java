@@ -8,6 +8,9 @@ import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 
 public class EatWorld implements CommandExecutor {
     @Override
@@ -155,11 +158,36 @@ public class EatWorld implements CommandExecutor {
 
                 Game game = new Game(strings.length > 1 && strings[1].equalsIgnoreCase("debug"));
 
-                if(game.debug) {
+                if(game.debug)
                     WorldEater.sendMessage(commandSender, "§3Debug mode enabled. Adding all online players.");
 
-                    for(Player eachPlayer : WorldEater.getPlugin().getServer().getOnlinePlayers())
-                        game.playerJoin(eachPlayer, false);
+                if(game.debug || (strings.length > 1 && strings[1].equalsIgnoreCase("serverwide"))) {
+                    int skippedPlayers = 0;
+
+                    WorldEater.sendMessage(commandSender, "Adding all non-busy players to the game...");
+
+                    Collection<? extends Player> serverPlayers = WorldEater.getPlugin().getServer().getOnlinePlayers();
+
+                    for(Player eachPlayer : serverPlayers) {
+                        boolean shouldInvitePlayer = true;
+
+                        for(Game eachGame : Game.getInstances())
+                            if(eachGame.players.contains(eachPlayer) || eachGame.spectators.contains(eachPlayer)) {
+                                shouldInvitePlayer = false; // Don't invite players already in other games.
+                                skippedPlayers++;
+                                WorldEater.sendMessage(eachPlayer, "§cA server-wide game was to invite you.");
+                                break;
+                            }
+
+                        if(shouldInvitePlayer) {
+                            game.playerJoin(eachPlayer, false);
+                            WorldEater.sendMessage(eachPlayer, "§eYou were automatically put in a game of WorldEater.");
+                        }
+                    }
+
+                    if(skippedPlayers > 0)
+                        WorldEater.sendMessage(commandSender, "§cSkipped " + skippedPlayers + " busy player(s).");
+                    WorldEater.sendMessage(commandSender, "§aInvited " + (serverPlayers.size() - skippedPlayers) + " player(s) to game.");
                 }
             }  else if(strings[0].equalsIgnoreCase("list")) {
                 if(!commandSender.isOp()) {

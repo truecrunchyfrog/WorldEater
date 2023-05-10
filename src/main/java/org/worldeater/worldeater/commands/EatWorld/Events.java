@@ -2,10 +2,7 @@ package org.worldeater.worldeater.commands.EatWorld;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.ConnectionSide;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.events.PacketListener;
+import com.comphenix.protocol.events.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -44,15 +41,18 @@ public final class Events implements Listener {
         game = gameInstance;
         silencerItems = new ArrayList<>();
         silencedPlayers = new ArrayList<>();
-        packetListener = new PacketAdapter(WorldEater.getPlugin(), ConnectionSide.SERVER_SIDE) {
+        packetListener = new PacketAdapter(WorldEater.getPlugin(), PacketType.Play.Server.BLOCK_ACTION) {
             @Override
             public void onPacketSending(PacketEvent event) {
-                if(event.getPacketType() == PacketType.Play.Server.ENTITY_SOUND && event.getPlayer().getWorld() == game.world && silencedPlayers.contains(event.getPlayer()))
+                WorldEater.getPlugin().getLogger().info("PACKET SENDING EVENT!!!" + event.getPacketType().name());
+                if(/*event.getPlayer().getWorld() == game.world && */silencedPlayers.contains(event.getPlayer())) {
+                    WorldEater.getPlugin().getLogger().info("CANCEL PACKET EVENT");
                     event.setCancelled(true);
+                }
             }
         };
 
-        ProtocolLibrary.getProtocolManager().addPacketListener(packetListener);
+        WorldEater.protocolManager.addPacketListener(packetListener);
     }
 
     public void stopPacketListener() {
@@ -199,7 +199,7 @@ public final class Events implements Listener {
     private void onPlayerInteract(PlayerInteractEvent e) {
         if((e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) && game.players.contains(e.getPlayer())) {
             if(silencerItems.contains(e.getItem())) {
-                if(!game.hiders.contains(e.getPlayer())) {
+                if(!game.hiders.contains(e.getPlayer()) && !game.debug) {
                     WorldEater.sendMessage(e.getPlayer(), "§cOnly hiders may use this!");
                     return;
                 }
@@ -211,14 +211,14 @@ public final class Events implements Listener {
                 player.sendTitle("§aSssh...", "§3Your are now §nsilent§3.", 10, 20 * 3, 10);
                 WorldEater.sendMessage(player, "§eSounds you make will be silenced for §c30§e seconds.");
 
-                new BukkitRunnable() {
+                game.bukkitTasks.add(new BukkitRunnable() {
                     @Override
                     public void run() {
                         silencedPlayers.remove(player);
                         player.sendTitle("§c§lSssh!", "§eYou are no longer silent.", 10, 20 * 3, 10);
                         WorldEater.sendMessage(player, "§eYou now make sounds again.");
                     }
-                }.runTaskLater(WorldEater.getPlugin(), 20 * 30);
+                }.runTaskLater(WorldEater.getPlugin(), 20 * 30));
             }
         }
     }

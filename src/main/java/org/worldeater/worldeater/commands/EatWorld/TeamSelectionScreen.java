@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -58,10 +59,10 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
             inventory.setItem(i, getCustomItem("§r", Material.GRAY_STAINED_GLASS_PANE, null));
 
         for(Player seeker : seekers)
-            inventory.setItem(seekers.indexOf(seeker) + 1, getPlayerSkull(seeker, "§8[§cSeeker§8] §e" + seeker.getName()));
+            inventory.setItem(seekers.indexOf(seeker) + 1, getPlayerSkull(seeker, "§8[§cSeeker§8] §e" + seeker.getName() + (readyPlayers.contains(seeker) ? " §a§lREADY" : ""), readyPlayers.contains(seeker)));
 
         for(Player hider : hiders)
-            inventory.setItem(hiders.indexOf(hider) + 9 + 1, getPlayerSkull(hider, "§8[§aHider§8] §e" + hider.getName()));
+            inventory.setItem(hiders.indexOf(hider) + 9 + 1, getPlayerSkull(hider, "§8[§aHider§8] §e" + hider.getName() + (readyPlayers.contains(hider) ? " §a§lREADY" : ""), readyPlayers.contains(hider)));
 
         ItemStack clock = getCustomItem("§c" + timeLeft + "§e seconds until teams are confirmed.", Material.CLOCK, null);
         clock.setAmount(timeLeft);
@@ -105,6 +106,10 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
     }
 
     private static ItemStack getPlayerSkull(OfflinePlayer player, String label) {
+        return getPlayerSkull(player, label, false);
+    }
+
+    private static ItemStack getPlayerSkull(OfflinePlayer player, String label, boolean glow) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
 
@@ -113,7 +118,13 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         skullMeta.setOwningPlayer(player);
         skullMeta.setDisplayName(label);
 
+        if(glow)
+            skullMeta.addEnchant(Enchantment.ARROW_DAMAGE, 1, true);
+
         item.setItemMeta(skullMeta);
+
+        if(glow)
+            item.removeEnchantment(Enchantment.ARROW_DAMAGE);
 
         return item;
     }

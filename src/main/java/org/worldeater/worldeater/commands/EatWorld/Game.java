@@ -254,7 +254,7 @@ public class Game {
 
         frozenPlayers.addAll(players);
 
-        int selectTeamTime = !debug ? 20 : 5;
+        int selectTeamTime = !debug ? 40 : 5;
         final BukkitTask waitForSelection;
         final ArrayList<BukkitTask> tasks = new ArrayList<>();
 
