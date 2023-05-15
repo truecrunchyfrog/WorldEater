@@ -8,15 +8,39 @@ import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
 public class EatWorld implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(strings.length > 0) {
-            if(strings[0].equalsIgnoreCase("stop")) {
+            if(strings[0].equalsIgnoreCase("play")) {
+                if(!(commandSender instanceof Player)) {
+                    WorldEater.sendMessage(commandSender, "§cOnly players can play.");
+                    return true;
+                }
+
+                WorldEater.sendMessage(commandSender, "§eFinding a game for you...");
+
+                ArrayList<Game> gameInstances = Game.getInstances();
+
+                Game joinGame = null;
+
+                for(Game eachGame : gameInstances) {
+                    if(eachGame.players.contains((Player) commandSender) || eachGame.spectators.contains((Player) commandSender)) {
+                        WorldEater.sendMessage(commandSender, "§cYou are already in a game.");
+                        return true;
+                    }
+
+                    if(eachGame.status == Game.GameStatus.AWAITING_START && eachGame.players.size() < Game.maxPlayers && (joinGame == null || joinGame.players.size() < eachGame.players.size()))
+                        joinGame = eachGame;
+                }
+
+                if(joinGame == null)
+                    joinGame = new Game(((Player) commandSender).getWorld(), false);
+
+                joinGame.playerJoin((Player) commandSender, false);
+            } else if(strings[0].equalsIgnoreCase("stop")) {
                 if(!commandSender.isOp()) {
                     WorldEater.sendMessage(commandSender, "§cOnly operators may stop games.");
                     return true;
@@ -144,6 +168,11 @@ public class EatWorld implements CommandExecutor {
                     }
                 }
             } else if(strings[0].equalsIgnoreCase("create")) {
+                if(!(commandSender instanceof Player)) {
+                    WorldEater.sendMessage(commandSender, "§cOnly players can create games.");
+                    return true;
+                }
+
                 if(!commandSender.isOp()) {
                     WorldEater.sendMessage(commandSender, "§cOnly operators may create games.");
                     return true;
@@ -156,7 +185,7 @@ public class EatWorld implements CommandExecutor {
 
                 WorldEater.sendMessage(commandSender, "Creating a game of WorldEater!");
 
-                Game game = new Game(strings.length > 1 && strings[1].equalsIgnoreCase("debug"));
+                Game game = new Game(((Player) commandSender).getWorld(), strings.length > 1 && strings[1].equalsIgnoreCase("debug"));
 
                 if(game.debug)
                     WorldEater.sendMessage(commandSender, "§3Debug mode enabled. Adding all online players.");
