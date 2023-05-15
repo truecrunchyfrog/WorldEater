@@ -40,19 +40,20 @@ public class Game {
     public final int gameId;
     protected GameStatus status;
     protected final ArrayList<Player> players, hiders, frozenPlayers, spectators;
-    private static final int maxPlayers = 10;
+    protected static final int maxPlayers = 10;
     protected World world;
     protected ArrayList<BukkitTask> bukkitTasks;
     protected boolean debug;
     private final Events eventListener;
     private Team seekersTeam;
     private Team hidersTeam;
+    private static final String cacheWorldName = "WORLDEATER_CACHE";
 
     protected static ArrayList<Game> getInstances() {
         return instances;
     }
 
-    public Game(boolean debugMode) {
+    public Game(World broadcastChannel, boolean debugMode) {
         instance = this;
         instances.add(this);
         gameId = ThreadLocalRandom.current().nextInt((int) Math.pow(10, 3), (int) Math.pow(10, 4));
@@ -72,16 +73,16 @@ public class Game {
 
         int startDelay = !debug ? 20 : 1;
 
-        sendBroadcast("§6A game of WorldEater is starting in §c" + startDelay + "s§6.");
-        sendBroadcast("§6To join the game, type §f/eatworld join " + gameId + "§6.");
+        sendBroadcast(broadcastChannel, "§e*§fN§eE§fW§e!§f* §6A game starts in §c" + startDelay + "s§6. §a§l[ CLICK TO JOIN ]", "eatworld join " + gameId);
 
-        for(int i = startDelay; i > 0; i -= 5) {
+        for(int i = startDelay; i > 0; i--) {
             int finalI = i;
             bukkitTasks.add(new BukkitRunnable() {
                 @Override
                 public void run() {
-                    sendSound(Sound.BLOCK_BUBBLE_COLUMN_BUBBLE_POP, 1, 0.8f);
-                    sendGameMessage("§4[§c§l!§4] §6Game will start in §c" + finalI + "s§6.");
+                    sendSound(Sound.ENTITY_CHICKEN_EGG, 1, 2);
+                    if(finalI % 5 == 0)
+                        sendGameMessage("§4[§c§l!§4] §6Game starts in §c" + finalI + "s§6.");
                 }
             }.runTaskLater(WorldEater.getPlugin(), 20L * (startDelay - i)));
         }
@@ -97,45 +98,61 @@ public class Game {
     private void gameBuilder() {
         status = GameStatus.RUNNING;
 
-        sendSound(Sound.ENTITY_TNT_PRIMED, 1, 0.5f);
+        sendSound(Sound.ENTITY_CHICKEN_DEATH, 1, 0.5f);
 
         if((!debug || players.size() == 0) && players.size() < 2) {
             players.clear();
             stopHard(false);
 
-            sendBroadcast("§cNot enough players joined. Game aborted.");
+            sendGameMessage("§cNot enough players joined. Game aborted.");
             return;
         }
 
+        for(Player eachPlayer : players)
+            eachPlayer.sendTitle("§bPreparing Game", "§3The game world is being generated...", 0, 30, 0);
+
         sendGameMessage("Preparing game...");
-        sendGameMessage("Creating normal world...");
+
+        World cacheWorld = WorldEater.getPlugin().getServer().getWorld(cacheWorldName);
+
+        World normalWorld;
 
         String worldName = "WorldEater_Game_" + gameId;
 
-        WorldCreator normalWorldCreator = new WorldCreator(worldName + "T");
-        normalWorldCreator.type(WorldType.NORMAL);
-        normalWorldCreator.generateStructures(true);
-        normalWorldCreator.biomeProvider(new BiomeProvider() {
-            @SuppressWarnings("all")
-            @Override
-            public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
-                return Biome.DARK_FOREST;
-            }
+        if(cacheWorld == null) {
+            sendGameMessage("Creating normal world...");
 
-            @SuppressWarnings("all")
-            @Override
-            public List<Biome> getBiomes(WorldInfo worldInfo) {
-                List<Biome> result = new ArrayList<>();
-                result.add(Biome.DARK_FOREST);
-                return result;
-            }
-        });
+            WorldCreator normalWorldCreator = new WorldCreator(!debug ? cacheWorldName : worldName + "T");
+            normalWorldCreator.type(WorldType.NORMAL);
+            normalWorldCreator.generateStructures(true);
+            normalWorldCreator.biomeProvider(new BiomeProvider() {
+                @SuppressWarnings("all")
+                @Override
+                public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
+                    return Biome.DARK_FOREST;
+                }
 
-        World normalWorld = normalWorldCreator.createWorld();
-        assert normalWorld != null;
+                @SuppressWarnings("all")
+                @Override
+                public List<Biome> getBiomes(WorldInfo worldInfo) {
+                    List<Biome> result = new ArrayList<>();
+                    result.add(Biome.DARK_FOREST);
+                    return result;
+                }
+            });
+
+            normalWorld = normalWorldCreator.createWorld();
+            assert normalWorld != null;
+        } else {
+            sendGameMessage("Using cached world.");
+            normalWorld = cacheWorld;
+        }
 
         if(debug)
             sendGameMessage(String.valueOf(normalWorld.getSeed()));
+
+        for(Player eachPlayer : players)
+            eachPlayer.sendTitle("§bPreparing Game", "§3The placeholder world is being generated...", 0, 30, 0);
 
         sendGameMessage("Creating void world...");
 
@@ -156,13 +173,17 @@ public class Game {
 
         // Clone chunk
 
-        int chunkIdx = 0;
+        int chunkIdx, chunkIdxStart;
+        chunkIdx = chunkIdxStart = (int) Math.floor(Math.random() * Math.pow(10, 8));
         Chunk normalChunk = null;
+
+        for(Player eachPlayer : players)
+            eachPlayer.sendTitle("§bPreparing Game", "§3Finding a nice chunk to play in...", 0, 30, 0);
 
         sendGameMessage("Finding a good chunk...");
 
         do {
-            if(chunkIdx > 100) {
+            if(chunkIdx - chunkIdxStart > 100) {
                 sendGameMessage("Too many attempts! Gave up trying to find a good chunk.");
                 break;
             }
@@ -172,6 +193,9 @@ public class Game {
         } while(isChunkFlooded(normalChunk));
 
         Chunk chunk = world.getChunkAt(0, 0);
+
+        for(Player eachPlayer : players)
+            eachPlayer.sendTitle("§bChoose Team", "§3Choose what team to join.", 0, 10, 0);
 
         sendGameMessage("Cloning chunk...");
 
@@ -183,16 +207,18 @@ public class Game {
                         chunk.getBlock(x, y, z).setType(sourceMaterial);
                 }
 
-        sendGameMessage("Unloading normal world...");
+        if(debug) {
+            sendGameMessage("Unloading normal world...");
 
-        WorldEater.getPlugin().getServer().unloadWorld(normalWorld, false);
+            WorldEater.getPlugin().getServer().unloadWorld(normalWorld, false);
 
-        sendGameMessage("Deleting normal world...");
+            sendGameMessage("Deleting normal world...");
 
-        try {
-            FileUtils.deleteDirectory(normalWorld.getWorldFolder());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            try {
+                FileUtils.deleteDirectory(normalWorld.getWorldFolder());
+            } catch(IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         world.setGameRule(GameRule.KEEP_INVENTORY, true);
@@ -617,8 +643,16 @@ public class Game {
             WorldEater.sendMessage(eachPlayer, s);
     }
 
-    protected void sendBroadcast(String s) {
-        WorldEater.sendBroadcast("§8§l[ §7#" + gameId + " §8§l]§7 " + s);
+    private String getBroadcastPrefix() {
+        return "§8§l[ §7#" + gameId + " §8§l]§7 ";
+    }
+
+    protected void sendBroadcast(World world, String s) {
+        WorldEater.sendWorldBroadcast(world, getBroadcastPrefix() + s);
+    }
+
+    protected void sendBroadcast(World world, String s, String command) {
+        WorldEater.sendWorldBroadcast(world, getBroadcastPrefix() + s, command);
     }
 
     protected void sendSound(Sound sound, float v, float v1) {
@@ -733,7 +767,7 @@ public class Game {
             sendSound(Sound.ENTITY_CAT_HISS, 1, 0.5f);
 
             sendGameMessage("§e" + player.getName() + "§7 is watching as a spectator.");
-            WorldEater.sendMessage(player, "Type §e/eatworld leave§7 to stop spectating.");
+            WorldEater.sendMessage(player, "Type §e/eatworld leave§7 to stop spectating.", "eatworld leave");
 
             spectators.add(player);
             return;
@@ -750,11 +784,14 @@ public class Game {
         }
 
         players.add(player);
-        WorldEater.sendMessage(player, "§aYou joined! Please wait for the game to start. Type §e/eatworld leave§a to leave the queue.");
-        sendBroadcast("§a" + player.getName() + "§7 joined the game queue (§6" + players.size() + "§7/§6" + maxPlayers + "§7).");
+        sendGameMessage("§a" + player.getName() + "§7 joined the game queue (§6" + players.size() + "§7/§6" + maxPlayers + "§7).");
+
+        WorldEater.sendMessage(player, "§4< §7Quit? §4> §cType §e/eatworld leave§c to leave the game you're in.", "eatworld leave");
 
         if(players.size() == maxPlayers)
-            sendBroadcast("§aThe game has been filled!");
+            sendGameMessage("§aThe game has been filled!");
+
+        sendSound(Sound.BLOCK_CHORUS_FLOWER_GROW, 1, 2);
     }
 
     protected void playerLeave(Player player) {
