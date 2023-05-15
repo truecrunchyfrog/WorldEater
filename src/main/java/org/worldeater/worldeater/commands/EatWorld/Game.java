@@ -647,10 +647,6 @@ public class Game {
         return "§8§l[ §7#" + gameId + " §8§l]§7 ";
     }
 
-    /*protected void sendBroadcast(World world, String s) {
-        WorldEater.sendWorldBroadcast(world, getBroadcastPrefix() + s);
-    }*/
-
     protected void sendBroadcast(World world, String s, String command) {
         WorldEater.sendWorldBroadcast(world, getBroadcastPrefix() + s, command);
     }
