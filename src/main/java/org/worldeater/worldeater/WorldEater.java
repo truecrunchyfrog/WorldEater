@@ -2,6 +2,9 @@ package org.worldeater.worldeater;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -41,8 +44,14 @@ public final class WorldEater extends JavaPlugin {
         return messagePrefix + text;
     }
 
-    public static void sendBroadcast(String text) {
-        plugin.getServer().broadcastMessage(getFancyText(text));
+    public static void sendWorldBroadcast(World world, String text) {
+        for(Player eachPlayer : world.getPlayers())
+            sendMessage(eachPlayer, text);
+    }
+
+    public static void sendWorldBroadcast(World world, String text, String command) {
+        for(Player eachPlayer : world.getPlayers())
+            sendMessage(eachPlayer, text, command);
     }
 
     public static void sendMessage(CommandSender commandSender, String text) {
@@ -51,5 +60,11 @@ public final class WorldEater extends JavaPlugin {
 
     public static void sendMessage(Player player, String text) {
         player.sendMessage(getFancyText(text));
+    }
+
+    public static void sendMessage(Player player, String text, String runCommand) {
+        TextComponent textComponent = new TextComponent(getFancyText(text));
+        textComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + runCommand));
+        player.spigot().sendMessage(textComponent);
     }
 }
