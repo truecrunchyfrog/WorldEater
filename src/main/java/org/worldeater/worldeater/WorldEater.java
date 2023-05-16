@@ -4,9 +4,12 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.FurnaceRecipe;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.worldeater.worldeater.commands.EatWorld.EatWorld;
 
@@ -66,5 +69,15 @@ public final class WorldEater extends JavaPlugin {
         TextComponent textComponent = new TextComponent(getFancyText(text));
         textComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + runCommand));
         player.spigot().sendMessage(textComponent);
+    }
+
+    public static ItemStack getCookedItem(ItemStack inputItem) {
+        FurnaceRecipe recipe = Bukkit.getServer().getRecipesFor(inputItem).stream()
+                .filter(FurnaceRecipe.class::isInstance)
+                .map(FurnaceRecipe.class::cast)
+                .findFirst()
+                .orElse(null);
+
+        return recipe != null ? recipe.getResult().clone() : null;
     }
 }

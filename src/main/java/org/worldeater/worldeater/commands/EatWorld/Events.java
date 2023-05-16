@@ -2,7 +2,9 @@ package org.worldeater.worldeater.commands.EatWorld;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.*;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.events.PacketListener;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -30,6 +32,8 @@ import org.worldeater.worldeater.WorldEater;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Objects;
+
+import static org.worldeater.worldeater.WorldEater.getCookedItem;
 
 public final class Events implements Listener {
     private final Game game;
@@ -143,7 +147,7 @@ public final class Events implements Listener {
         if(game.players.contains(e.getPlayer()) && (game.status == Game.GameStatus.AWAITING_START || game.frozenPlayers.contains(e.getPlayer())))
             e.setCancelled(true);
     }
-
+    
     @EventHandler
     private void onInventoryClick(InventoryClickEvent e) {
         if(e.getWhoClicked() instanceof Player && game.frozenPlayers.contains((Player) e.getWhoClicked()))
@@ -191,8 +195,12 @@ public final class Events implements Listener {
 
     @EventHandler
     private void onEntityPickupItem(EntityPickupItemEvent e) {
-        if(e.getEntity().getWorld() == game.world && (game.status != Game.GameStatus.RUNNING || game.frozenPlayers.contains((Player) e.getEntity())))
-            e.setCancelled(true);
+        if(e.getEntity().getWorld() == game.world) {
+            if(game.status != Game.GameStatus.RUNNING || game.frozenPlayers.contains((Player) e.getEntity()))
+                e.setCancelled(true);
+            else if(game.autoCook && getCookedItem(e.getItem().getItemStack()) != null)
+                e.getItem().setItemStack(Objects.requireNonNull(getCookedItem(e.getItem().getItemStack())));
+        }
     }
 
     @EventHandler

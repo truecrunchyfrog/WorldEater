@@ -11,6 +11,8 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.generator.WorldInfo;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -26,6 +28,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+
+import static org.worldeater.worldeater.WorldEater.getCookedItem;
 
 public class Game {
     private final static ArrayList<Game> instances = new ArrayList<>();
@@ -48,6 +52,8 @@ public class Game {
     private Team seekersTeam;
     private Team hidersTeam;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
+
+    protected boolean autoCook = false;
 
     protected static ArrayList<Game> getInstances() {
         return instances;
@@ -481,8 +487,25 @@ public class Game {
                                             sendGameMessage("§eThe game has §c" + finalI + "§e minutes remaining.");
 
                                         switch(finalI) { // Timed events
+                                            case 24:
+                                                sendSound(Sound.BLOCK_BLASTFURNACE_FIRE_CRACKLE, 1, 0.5f);
+                                                sendGameMessage("§3§lAUTO COOKING! §bAnything in your inventory or picked up will be cooked automatically. No need to smelt them! This ends in 3 minutes.");
+                                                autoCook = true;
+
+                                                for(Player player : players)
+                                                    cookPlayerInventory(player);
+
+                                                bukkitTasks.add(new BukkitRunnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        autoCook = false;
+                                                        sendGameMessage("§cAuto cooking expired!");
+                                                    }
+                                                }.runTaskLater(WorldEater.getPlugin(), 20 * 3));
+
+                                                break;
                                             case 20:
-                                                sendSound(Sound.ITEM_GOAT_HORN_SOUND_3, 1, 2f);
+                                                sendSound(Sound.ITEM_GOAT_HORN_SOUND_3, 1, 2);
                                                 sendGameMessage("§c§lMETEOR RAIN! §cHead to shelter!");
 
                                                 for(int i = 0; i < 10; i++) {
@@ -561,7 +584,7 @@ public class Game {
 
                                                 break;
                                             case 10:
-                                                sendSound(Sound.ITEM_GOAT_HORN_SOUND_6, 1, 2f);
+                                                sendSound(Sound.ITEM_GOAT_HORN_SOUND_6, 1, 2);
                                                 sendGameMessage("§eThe world border will shrink in §c30§e seconds!");
 
                                                 bukkitTasks.add(new BukkitRunnable() {
@@ -924,5 +947,11 @@ public class Game {
                 seeker.teleport(getSpawnLocation());
             }
         }.runTaskLater(WorldEater.getPlugin(), 20 * 10));
+    }
+
+    private void cookPlayerInventory(Player player) {
+        for(ItemStack item : player.getInventory())
+            if(getCookedItem(item) != null)
+                item.setType(Objects.requireNonNull(getCookedItem(item)).getType());
     }
 }
