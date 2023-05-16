@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.worldeater.worldeater.commands.EatWorld.EatWorld;
 
+import java.io.File;
 import java.util.Objects;
 
 public final class WorldEater extends JavaPlugin {
@@ -79,5 +80,14 @@ public final class WorldEater extends JavaPlugin {
                 .orElse(null);
 
         return recipe != null ? recipe.getResult().clone() : null;
+    }
+
+    public File getPluginDirectory() {
+        File dir = getDataFolder();
+
+        if(!dir.mkdir() && (!dir.exists() || !dir.isDirectory()))
+            throw new Error("Cannot create plugin directory.");
+
+        return dir;
     }
 }

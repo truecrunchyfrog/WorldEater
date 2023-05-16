@@ -31,16 +31,18 @@ public class PlayerState {
     private final String[] advancementCriteria;
 
     private static File getPlayerStateDir() {
-        File playerStateDir = new File(WorldEater.getPlugin().getDataFolder(), "playerStates");
+        File playerStateDir = new File(WorldEater.getPlugin().getPluginDirectory(), "PlayerStates");
 
         if(!playerStateDir.mkdir() && (!playerStateDir.exists() || !playerStateDir.isDirectory()))
-            return null;
+            throw new Error("Cannot create PlayerStates directory.");
 
         return playerStateDir;
     }
+
     private static File getPlayerStateFile(UUID playerId) {
         return new File(getPlayerStateDir(), playerId.toString() + ".yml");
     }
+
     private static void deletePlayerStateFile(UUID playerId) {
         if(!getPlayerStateFile(playerId).delete())
             throw new Error("Cannot delete UUID " + playerId + " state file.");

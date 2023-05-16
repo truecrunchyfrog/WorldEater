@@ -1,17 +1,18 @@
 package org.worldeater.worldeater.commands.EatWorld;
 
-import org.apache.commons.io.FileUtils;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.block.Biome;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Fireball;
-import org.bukkit.entity.Horse;
-import org.bukkit.entity.Player;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.*;
 import org.bukkit.event.HandlerList;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.generator.WorldInfo;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -21,6 +22,7 @@ import org.bukkit.scoreboard.Team;
 import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +52,16 @@ public class Game {
     private final Events eventListener;
     private Team seekersTeam;
     private Team hidersTeam;
-    private static final String cacheWorldName = "WORLDEATER_CACHE";
+    private static final String cacheWorldName = "WORLDEATER_CACHE", cacheVoidWorldName = cacheWorldName + "_VOID";
+
+    private enum PreparationStep {
+        CREATE_NORMAL_WORLD,
+        CREATE_VOID_WORLD,
+        FIND_CHUNK,
+        CLONE_CHUNK,
+        UNLOAD_NORMAL_WORLD,
+        FINAL_SETUP
+    }
 
     protected boolean autoCook = false;
 
@@ -78,7 +89,7 @@ public class Game {
 
         int startDelay = !debug ? 20 : 1;
 
-        sendBroadcast(broadcastChannel, "§e*§fN§eE§fW§e!§f* §6A game starts in §c" + startDelay + "s§6. §a§l[ CLICK TO JOIN ]", "eatworld join " + gameId);
+        sendBroadcast(broadcastChannel, "§6A game starts in §c" + startDelay + "s§6. §a§l[ CLICK TO JOIN ]", "eatworld join " + gameId);
 
         for(int i = startDelay; i > 0; i--) {
             int finalI = i;
@@ -86,6 +97,8 @@ public class Game {
                 @Override
                 public void run() {
                     sendSound(Sound.ENTITY_CHICKEN_EGG, 1, 2);
+                    for(Player eachPlayer : players)
+                        eachPlayer.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§6§lWORLD§2§lEATER §8| §bStarting game in §6§l" + finalI + "s§b (§3" + players.size() + "§b/§3" + maxPlayers + "§b players)"));
                     if(finalI % 5 == 0)
                         sendGameMessage("§4[§c§l!§4] §6Game starts in §c" + finalI + "s§6.");
                 }
@@ -103,65 +116,53 @@ public class Game {
     private void gameBuilder() {
         status = GameStatus.RUNNING;
 
-        sendSound(Sound.ENTITY_CHICKEN_DEATH, 1, 0.5f);
+        sendSound(Sound.ENTITY_AXOLOTL_HURT, 1, 0.5f);
 
         if((!debug || players.size() == 0) && players.size() < 2) {
+            sendGameMessage("§cNot enough players joined. Game aborted.");
             players.clear();
             stopHard(false);
-
-            sendGameMessage("§cNot enough players joined. Game aborted.");
             return;
         }
 
-        for(Player eachPlayer : players)
-            eachPlayer.sendTitle("§bPreparing Game", "§3The game world is being generated...", 0, 30, 0);
+        preparingGameProgressUpdate(PreparationStep.CREATE_NORMAL_WORLD);
 
         sendGameMessage("Preparing game...");
 
-        World cacheWorld = WorldEater.getPlugin().getServer().getWorld(cacheWorldName);
-
         World normalWorld;
 
-        String worldName = "WorldEater_Game_" + gameId;
+        sendGameMessage("Creating normal world...");
 
-        if(cacheWorld == null) {
-            sendGameMessage("Creating normal world...");
+        WorldCreator normalWorldCreator = new WorldCreator(cacheWorldName);
+        normalWorldCreator.type(WorldType.NORMAL);
+        normalWorldCreator.generateStructures(true);
+        normalWorldCreator.biomeProvider(new BiomeProvider() {
+            @SuppressWarnings("all")
+            @Override
+            public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
+                return Biome.DARK_FOREST;
+            }
 
-            WorldCreator normalWorldCreator = new WorldCreator(!debug ? cacheWorldName : worldName + "T");
-            normalWorldCreator.type(WorldType.NORMAL);
-            normalWorldCreator.generateStructures(true);
-            normalWorldCreator.biomeProvider(new BiomeProvider() {
-                @SuppressWarnings("all")
-                @Override
-                public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
-                    return Biome.DARK_FOREST;
-                }
+            @SuppressWarnings("all")
+            @Override
+            public List<Biome> getBiomes(WorldInfo worldInfo) {
+                List<Biome> result = new ArrayList<>();
+                result.add(Biome.DARK_FOREST);
+                return result;
+            }
+        });
 
-                @SuppressWarnings("all")
-                @Override
-                public List<Biome> getBiomes(WorldInfo worldInfo) {
-                    List<Biome> result = new ArrayList<>();
-                    result.add(Biome.DARK_FOREST);
-                    return result;
-                }
-            });
-
-            normalWorld = normalWorldCreator.createWorld();
-            assert normalWorld != null;
-        } else {
-            sendGameMessage("Using cached world.");
-            normalWorld = cacheWorld;
-        }
+        normalWorld = normalWorldCreator.createWorld();
+        assert normalWorld != null;
 
         if(debug)
             sendGameMessage(String.valueOf(normalWorld.getSeed()));
 
-        for(Player eachPlayer : players)
-            eachPlayer.sendTitle("§bPreparing Game", "§3The placeholder world is being generated...", 0, 30, 0);
+        preparingGameProgressUpdate(PreparationStep.CREATE_VOID_WORLD);
 
         sendGameMessage("Creating void world...");
 
-        WorldCreator worldCreator = new WorldCreator(worldName);
+        WorldCreator worldCreator = new WorldCreator(cacheVoidWorldName);
 
         worldCreator.generator(new ChunkGenerator() {
             @SuppressWarnings("all")
@@ -176,33 +177,107 @@ public class Game {
         assert world != null;
         world.setPVP(false);
 
+        // Clear world
+
+        sendGameMessage("Resetting void world...");
+
+        for(int x = -64; x < 64; x++)
+            for(int z = -64; z < 64; z++)
+                for(int y = world.getMinHeight(); y <= world.getHighestBlockYAt(x, z); y++)
+                    if(!world.getBlockAt(x, y, z).getType().isAir())
+                        world.setBlockData(x, y, z, Material.AIR.createBlockData());
+
         // Clone chunk
 
-        int chunkIdx, chunkIdxStart;
-        chunkIdx = chunkIdxStart = (int) Math.floor(Math.random() * Math.pow(10, 8));
+        Random random = new Random();
+
+        int chunkX = 0,
+                chunkY = 0,
+                chunkTries = 0;
+        List<Integer> chunkCoordinate = new ArrayList<>();
         Chunk normalChunk = null;
 
-        for(Player eachPlayer : players)
-            eachPlayer.sendTitle("§bPreparing Game", "§3Finding a nice chunk to play in...", 0, 30, 0);
+        preparingGameProgressUpdate(PreparationStep.FIND_CHUNK);
+
+        if(debug)
+            sendGameMessage("Checking bad chunk coordinates...");
+
+        File badChunksFile = new File(WorldEater.getPlugin().getPluginDirectory(), "badChunks.yml");
+        YamlConfiguration badChunksConfig = YamlConfiguration.loadConfiguration(badChunksFile);
+
+        if(debug)
+            sendGameMessage("Copying bad chunk coordinates...");
+
+        List<List<Integer>> badChunks = (List<List<Integer>>) badChunksConfig.getList("chunks");
+
+        if(badChunks == null)
+            badChunks = new ArrayList<>();
+
+        if(debug)
+            sendGameMessage("Found " + badChunks.size() + " bad chunks registered.");
 
         sendGameMessage("Finding a good chunk...");
 
-        do {
-            if(chunkIdx - chunkIdxStart > 100) {
+        while(true) {
+            if(chunkTries > 150) {
                 sendGameMessage("Too many attempts! Gave up trying to find a good chunk.");
                 break;
             }
 
-            normalChunk = normalWorld.getChunkAt(chunkIdx, chunkIdx);
-            chunkIdx += 5;
-        } while(isChunkFlooded(normalChunk));
+            if(debug)
+                sendGameMessage("Checking chunk (" + chunkX + ", " + chunkY + ")...");
+
+            chunkCoordinate.clear();
+            chunkCoordinate.add(chunkX);
+            chunkCoordinate.add(chunkY);
+
+            boolean registeredBadChunk = false;
+
+            for(List<Integer> badChunkCoordinate : badChunks)
+                if(badChunkCoordinate.equals(chunkCoordinate)) {
+                    registeredBadChunk = true;
+                    break;
+                }
+
+            if(registeredBadChunk || isChunkFlooded(normalWorld.getChunkAt(chunkX, chunkY))) {
+                if(debug)
+                    sendGameMessage("Bad chunk! Blacklisting.");
+
+                badChunks.add(new ArrayList<>(chunkCoordinate));
+
+                chunkX = random.nextInt(0, 100);
+                chunkY = random.nextInt(0, 100);
+                chunkTries++;
+            } else {
+                normalChunk = normalWorld.getChunkAt(chunkX, chunkY);
+                break;
+            }
+        }
+
+        if(debug)
+            sendGameMessage("Selected chunk! Blacklisting.");
+
+        badChunks.add(chunkCoordinate);
+
+        badChunksConfig.set("chunks", badChunks);
+
+        try {
+            badChunksConfig.save(badChunksFile);
+        } catch(IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        if(debug)
+            sendGameMessage("Bad chunk register updated! " + badChunks.size() + " bad chunks registered in total.");
 
         Chunk chunk = world.getChunkAt(0, 0);
 
-        for(Player eachPlayer : players)
-            eachPlayer.sendTitle("§bChoose Team", "§3Choose what team to join.", 0, 10, 0);
+        preparingGameProgressUpdate(PreparationStep.CLONE_CHUNK);
 
-        sendGameMessage("Cloning chunk...");
+        if(debug)
+            sendGameMessage("Cloning chunk...");
+
+        assert normalChunk != null;
 
         for(int x = 0; x < 16; x++)
             for(int z = 0; z < 16; z++)
@@ -212,23 +287,19 @@ public class Game {
                         chunk.getBlock(x, y, z).setType(sourceMaterial);
                 }
 
-        if(debug) {
+        preparingGameProgressUpdate(PreparationStep.UNLOAD_NORMAL_WORLD);
+
+        if(debug)
             sendGameMessage("Unloading normal world...");
 
-            WorldEater.getPlugin().getServer().unloadWorld(normalWorld, false);
+        WorldEater.getPlugin().getServer().unloadWorld(normalWorld, false);
 
-            sendGameMessage("Deleting normal world...");
-
-            try {
-                FileUtils.deleteDirectory(normalWorld.getWorldFolder());
-            } catch(IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        preparingGameProgressUpdate(PreparationStep.FINAL_SETUP);
 
         world.setGameRule(GameRule.KEEP_INVENTORY, true);
 
-        sendGameMessage("Initializing animals...");
+        if(debug)
+            sendGameMessage("Initializing animals...");
 
         for(int i = 0; i < 4; i++)
             spawnEntityInNaturalHabitat(EntityType.COW);
@@ -239,7 +310,8 @@ public class Game {
         for(int i = 0; i < 2; i++)
             spawnEntityInNaturalHabitat(EntityType.CHICKEN);
 
-        sendGameMessage("Preparing players...");
+        if(debug)
+            sendGameMessage("Preparing players...");
 
         TeamSelectionScreen teamSelectionScreen = new TeamSelectionScreen(this);
         teamSelectionScreen.hiders.add(getRandomPlayer()); // Set random hider.
@@ -365,7 +437,7 @@ public class Game {
 
                         double speed = 0.1;
 
-                        final double[] angle = {0.0};
+                        final double[] angle = {0};
 
                         BukkitTask moveTask = Bukkit.getScheduler().runTaskTimer(WorldEater.getPlugin(), () -> {
                             if(!eachPlayer.isFlying())
@@ -379,7 +451,7 @@ public class Game {
 
                             angle[0] += speed;
                             angle[0] %= 360;
-                        }, 0L, 1L);
+                        }, 0, 1);
 
                         bukkitTasks.add(moveTask);
                         seekerCircleTasks.add(moveTask);
@@ -405,14 +477,18 @@ public class Game {
                         public void run() {
                             String timeLeftString = (finalI >= 60 ? "§c" + (finalI / 60) + "§em " : "") + "§c" + finalI % 60 + "§es";
 
-                            if(finalI % 5 == 0) {
-                                sendSound(Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, (float) finalI / (secondsToRelease), (float) (finalI / (secondsToRelease)) * 1.5f + 0.5f);
-                                sendGameMessage("§eSeekers are released in " + timeLeftString + ".");
-                            }
+                            if(finalI % 2 == 0)
+                                sendSound(Sound.BLOCK_POINTED_DRIPSTONE_FALL, 0.6f, 2);
 
-                            for(Player eachPlayer : players)
+                            if(finalI % 10 == 0)
+                                sendGameMessage("§eSeekers are released in " + timeLeftString + ".");
+
+                            for(Player eachPlayer : players) {
                                 if(!hiders.contains(eachPlayer))
                                     eachPlayer.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0);
+                                else
+                                    eachPlayer.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString));
+                            }
                         }
                     }.runTaskLater(WorldEater.getPlugin(), 20L * (secondsToRelease - i)));
                 }
@@ -436,6 +512,8 @@ public class Game {
 
                                 eachPlayer.resetTitle();
                                 eachPlayer.teleport(getSpawnLocation());
+                            } else {
+                                eachPlayer.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§c§lSEEKERS RELEASED!"));
                             }
                         }
 
@@ -715,17 +793,9 @@ public class Game {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            sendGameMessage("Unloading world...");
+                            sendGameMessage("Unloading and discarding world...");
 
-                            WorldEater.getPlugin().getServer().unloadWorld(world, true);
-
-                            sendGameMessage("Deleting world...");
-
-                            try {
-                                FileUtils.deleteDirectory(world.getWorldFolder());
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
+                            WorldEater.getPlugin().getServer().unloadWorld(world, false);
 
                             world = null;
 
@@ -759,9 +829,28 @@ public class Game {
 
         sendGameMessage("§aThe game has ended. Thanks for playing.");
 
+        Random random = new Random();
         for(int i = 0; i < 10; i++) {
-            double x = Math.random() * 48 - 16, z = Math.random() * 48 - 16;
-            world.spawnEntity(new Location(world, x, world.getHighestBlockYAt((int) x, (int) z), z), EntityType.FIREWORK);
+            double x = random.nextInt(-16, 16), z = random.nextInt(-16, 16);
+            FireworkEffect effect = FireworkEffect.builder().flicker(false).trail(false).with(FireworkEffect.Type.STAR).withColor(Color.fromRGB(
+                    random.nextInt(256),
+                    random.nextInt(256),
+                    random.nextInt(256)
+            )).build();
+
+            Firework firework = world.spawn(new Location(world, x, world.getHighestBlockYAt((int) x, (int) z) + random.nextInt(2, 10), z), Firework.class);
+
+            FireworkMeta fireworkMeta = firework.getFireworkMeta();
+            fireworkMeta.clearEffects();
+            fireworkMeta.addEffect(effect);
+
+            firework.setFireworkMeta(fireworkMeta);
+
+            new BukkitRunnable() {
+                public void run() {
+                    firework.detonate();
+                }
+            }.runTaskLater(WorldEater.getPlugin(), 20L * random.nextInt(1, 4));
         }
     }
 
@@ -785,14 +874,14 @@ public class Game {
             sendSound(Sound.ENTITY_CAT_HISS, 1, 0.5f);
 
             sendGameMessage("§e" + player.getName() + "§7 is watching as a spectator.");
-            WorldEater.sendMessage(player, "Type §e/eatworld leave§7 to stop spectating.", "eatworld leave");
+            WorldEater.sendMessage(player, "Type §e/eatworld leave§7 or click here to stop spectating.", "eatworld leave");
 
             spectators.add(player);
             return;
         }
 
         if(status != GameStatus.AWAITING_START) {
-            WorldEater.sendMessage(player, "§cThis game has already started. If you wish to spectate this game, use §e/eatworld join " + gameId + " spectate§c.");
+            WorldEater.sendMessage(player, "§cThis game has already started. If you wish to spectate this game, use §e/eatworld join " + gameId + " spectate§c or click here.", "eatworld join " + gameId);
             return;
         }
 
@@ -804,12 +893,12 @@ public class Game {
         players.add(player);
         sendGameMessage("§a" + player.getName() + "§7 joined the game queue (§6" + players.size() + "§7/§6" + maxPlayers + "§7).");
 
-        WorldEater.sendMessage(player, "§4< §7Quit? §4> §cType §e/eatworld leave§c to leave the game you're in.", "eatworld leave");
+        WorldEater.sendMessage(player, "§4< §7Quit? §4> §cClick here or type §e/eatworld leave§c to leave the game.", "eatworld leave");
 
         if(players.size() == maxPlayers)
             sendGameMessage("§aThe game has been filled!");
 
-        sendSound(Sound.BLOCK_CHORUS_FLOWER_GROW, 1, 2);
+        sendSound(Sound.ENTITY_AXOLOTL_ATTACK, 1, 2);
     }
 
     protected void playerLeave(Player player) {
@@ -952,5 +1041,10 @@ public class Game {
         for(ItemStack item : player.getInventory())
             if(getCookedItem(item) != null)
                 item.setType(Objects.requireNonNull(getCookedItem(item)).getType());
+    }
+
+    private void preparingGameProgressUpdate(PreparationStep step) {
+        for(Player eachPlayer : players)
+            eachPlayer.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§3§lPREPARING GAME §b" + (step.ordinal() + 1) + "§3/§b" + PreparationStep.values().length));
     }
 }
