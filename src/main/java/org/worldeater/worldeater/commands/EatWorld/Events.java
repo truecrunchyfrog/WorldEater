@@ -66,9 +66,11 @@ public final class Events implements Listener {
     @EventHandler
     private void onPlayerMove(PlayerMoveEvent e) {
         if(e.getFrom() != e.getTo() && e.getTo() != null && game.status == Game.GameStatus.RUNNING && e.getPlayer().getWorld() == game.world) {
-            if(game.frozenPlayers.contains(e.getPlayer()))
+            if(game.frozenPlayers.contains(e.getPlayer())) {
                 e.setCancelled(true); // Prevent frozen player from moving.
-            else if(game.spectators.contains(e.getPlayer()) && Objects.requireNonNull(e.getTo()).getY() < game.world.getMinHeight() - 20) {
+            } else if(e.getTo().getY() < game.world.getMinHeight() - 20 && game.players.contains(e.getPlayer())) {
+                e.getPlayer().setHealth(0);
+            } else if(game.spectators.contains(e.getPlayer()) && Objects.requireNonNull(e.getTo()).getY() < game.world.getMinHeight() - 20) {
                 e.setCancelled(true);
                 e.getPlayer().setFlying(true);
                 e.getPlayer().setVelocity(new Vector(0, 15, 0));
