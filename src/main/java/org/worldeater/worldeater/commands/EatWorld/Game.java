@@ -180,6 +180,9 @@ public class Game {
 
         sendGameMessage("Resetting void world...");
 
+        for(Entity entity : world.getEntities())
+            entity.remove();
+
         for(int x = -64; x < 64; x++)
             for(int z = -64; z < 64; z++)
                 for(int y = world.getMinHeight(); y <= world.getHighestBlockYAt(x, z); y++)
@@ -344,7 +347,7 @@ public class Game {
         for(Player eachPlayer : players) {
             try {
                 new PlayerState(eachPlayer).saveState();
-            } catch (IOException e) {
+            } catch(IOException e) {
                 throw new RuntimeException(e);
             }
 

@@ -1,16 +1,17 @@
 package org.worldeater.worldeater.commands.EatWorld;
 
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
-public class EatWorld implements CommandExecutor {
+public class EatWorld implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(strings.length > 0) {
@@ -264,5 +265,56 @@ public class EatWorld implements CommandExecutor {
 
         WorldEater.sendMessage(commandSender, "§cRun this command with an action! §o(join, leave, create, stop, list)");
         return true;
+    }
+
+    private static ArrayList<String> getGameIds(boolean notStartedYet) {
+        ArrayList<Game> gameInstances = Game.getInstances();
+        ArrayList<String> gameIds = new ArrayList<>();
+
+        for(Game game : gameInstances)
+            if(!notStartedYet || game.status == Game.GameStatus.AWAITING_START)
+                gameIds.add(String.valueOf(game.gameId));
+
+        return gameIds;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] strings) {
+        String[] defaultResponses = null;
+        String[] opResponses = null;
+
+        if(command.getName() == "eatworld") {
+            if(strings.length == 1) {
+                defaultResponses = new String[] {"play", "join", "leave", "resetme"};
+                opResponses = new String[] {"create", "stop", "list"};
+            } else if(strings.length > 1) {
+                switch(strings[0].toLowerCase()) {
+                    case "join":
+                        defaultResponses = getGameIds(false).toArray(new String[] {});
+                        break;
+                    case "create":
+                        opResponses = new String[]{"serverwide", "debug"};
+                        break;
+                    case "stop":
+                        ArrayList<String> stopChoices = new ArrayList<>();
+                        stopChoices.add("all");
+                        stopChoices.addAll(getGameIds(false));
+                        opResponses = stopChoices.toArray(new String[]{});
+                        break;
+                }
+            }
+        }
+
+        ArrayList<String> responses = new ArrayList<>();
+
+        if(defaultResponses != null)
+            for(String response : defaultResponses)
+                responses.add(response);
+
+        if(opResponses != null && commandSender.isOp())
+            for(String opResponse : opResponses)
+                responses.add(opResponse);
+
+        return responses;
     }
 }
