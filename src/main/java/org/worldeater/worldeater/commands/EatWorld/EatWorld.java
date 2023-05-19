@@ -8,6 +8,7 @@ import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -283,23 +284,29 @@ public class EatWorld implements TabExecutor {
         String[] defaultResponses = null;
         String[] opResponses = null;
 
-        if(command.getName() == "eatworld") {
+        if(command.getName().equals("eatworld")) {
             if(strings.length == 1) {
                 defaultResponses = new String[] {"play", "join", "leave", "resetme"};
                 opResponses = new String[] {"create", "stop", "list"};
             } else if(strings.length > 1) {
                 switch(strings[0].toLowerCase()) {
                     case "join":
-                        defaultResponses = getGameIds(false).toArray(new String[] {});
+                        if(strings.length == 2)
+                            defaultResponses = getGameIds(false).toArray(new String[] {});
+                        else
+                            defaultResponses = new String[] {"spectate"};
                         break;
                     case "create":
-                        opResponses = new String[]{"serverwide", "debug"};
+                        if(strings.length == 2)
+                            opResponses = new String[] {"serverwide", "debug"};
                         break;
                     case "stop":
-                        ArrayList<String> stopChoices = new ArrayList<>();
-                        stopChoices.add("all");
-                        stopChoices.addAll(getGameIds(false));
-                        opResponses = stopChoices.toArray(new String[]{});
+                        if(strings.length == 2) {
+                            ArrayList<String> stopChoices = new ArrayList<>();
+                            stopChoices.add("all");
+                            stopChoices.addAll(getGameIds(false));
+                            opResponses = stopChoices.toArray(new String[]{});
+                        }
                         break;
                 }
             }
@@ -308,12 +315,10 @@ public class EatWorld implements TabExecutor {
         ArrayList<String> responses = new ArrayList<>();
 
         if(defaultResponses != null)
-            for(String response : defaultResponses)
-                responses.add(response);
+            responses.addAll(Arrays.asList(defaultResponses));
 
         if(opResponses != null && commandSender.isOp())
-            for(String opResponse : opResponses)
-                responses.add(opResponse);
+            responses.addAll(Arrays.asList(opResponses));
 
         return responses;
     }

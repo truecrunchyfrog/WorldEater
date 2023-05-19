@@ -22,7 +22,8 @@ public class PlayerState {
     private final PlayerInventory inventory;
     private final double health;
     private final int foodLevel;
-    private final float experience;
+    private final int experienceLevel;
+    private final float experienceProgress;
     private final Location location;
     private final GameMode gameMode;
     private final boolean allowFlight;
@@ -65,7 +66,8 @@ public class PlayerState {
 
         player.setHealth(config.getDouble("health"));
         player.setFoodLevel(config.getInt("food_level"));
-        player.setExp(((float) config.getDouble("experience")));
+        player.setLevel(config.getInt("experience_level"));
+        player.setExp(((float) config.getDouble("experience_progress")));
         player.setGameMode(GameMode.valueOf(config.getString("game_mode")));
 
         player.setAllowFlight(config.getBoolean("allow_flight"));
@@ -99,7 +101,10 @@ public class PlayerState {
         player.setGameMode(GameMode.SURVIVAL);
         player.setHealth(20);
         player.setFoodLevel(20);
+
+        player.setLevel(0);
         player.setExp(0);
+
         player.setFireTicks(0);
         player.setHealthScaled(false);
 
@@ -155,7 +160,8 @@ public class PlayerState {
         inventory = player.getInventory();
         health = player.getHealth();
         foodLevel = player.getFoodLevel();
-        experience = player.getExp();
+        experienceLevel = player.getLevel();
+        experienceProgress = player.getExp();
         location = player.getLocation();
         gameMode = player.getGameMode();
         allowFlight = player.getAllowFlight();
@@ -184,7 +190,8 @@ public class PlayerState {
         config.set("inventory.off_hand", inventory.getItemInOffHand());
         config.set("health", health);
         config.set("food_level", foodLevel);
-        config.set("experience", experience);
+        config.set("experience_level", experienceLevel);
+        config.set("experience_progress", experienceProgress);
         config.set("location", location);
         config.set("game_mode", gameMode.name());
         config.set("allow_flight", allowFlight);

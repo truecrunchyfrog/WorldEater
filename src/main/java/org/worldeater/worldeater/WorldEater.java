@@ -1,7 +1,5 @@
 package org.worldeater.worldeater;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
@@ -20,13 +18,10 @@ public final class WorldEater extends JavaPlugin {
 
     private static WorldEater plugin;
     public static String messagePrefix = "§2§lWORLD§6§lEATER §8§l>> §7";
-    public static ProtocolManager protocolManager;
 
     @Override
     public void onEnable() {
         plugin = this;
-
-        protocolManager = ProtocolLibrary.getProtocolManager();
 
         Objects.requireNonNull(getCommand("eatworld")).setExecutor(new EatWorld());
 

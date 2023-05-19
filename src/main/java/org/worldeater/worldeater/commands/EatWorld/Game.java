@@ -16,17 +16,13 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
+import org.bukkit.scoreboard.*;
 import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.worldeater.worldeater.WorldEater.getCookedItem;
@@ -51,6 +47,7 @@ public class Game {
     private final Events eventListener;
     private Team seekersTeam;
     private Team hidersTeam;
+    private Scoreboard scoreboard;
     private static final String cacheWorldName = "WORLDEATER_CACHE", cacheVoidWorldName = cacheWorldName + "_VOID";
 
     private enum PreparationStep {
@@ -63,6 +60,23 @@ public class Game {
     }
 
     protected boolean autoCook = false;
+    private int timeLeft;
+    private final ArrayList<GameEvent> events;
+
+    private enum GameEvent {
+        AUTO_COOK("Automatic cooking"),
+        METEOR_RAIN("Meteor rain"),
+        VISIBLE_HIDERS("Hiders are exposed"),
+        DRILLING("Drilling"),
+        SHRINKING_WORLD_BORDER("World border is shrinking"),
+        EXPLODING_HORSES("Exploding horses are incoming");
+
+        public final String eventName;
+
+        GameEvent(String eventName) {
+            this.eventName = eventName;
+        }
+    }
 
     protected static ArrayList<Game> getInstances() {
         return instances;
@@ -85,6 +99,7 @@ public class Game {
         frozenPlayers = new ArrayList<>();
         spectators = new ArrayList<>();
         bukkitTasks = new ArrayList<>();
+        events = new ArrayList<>();
 
         int startDelay = !debug ? 20 : 1;
 
@@ -176,7 +191,7 @@ public class Game {
         assert world != null;
         world.setPVP(false);
 
-        // Clear world
+        // Reset world
 
         sendGameMessage("Resetting void world...");
 
@@ -188,6 +203,9 @@ public class Game {
                 for(int y = world.getMinHeight(); y <= world.getHighestBlockYAt(x, z); y++)
                     if(!world.getBlockAt(x, y, z).getType().isAir())
                         world.setBlockData(x, y, z, Material.AIR.createBlockData());
+
+        world.setTime(0);
+        world.setClearWeatherDuration(20 * 60 * 30);
 
         // Clone chunk
 
@@ -344,6 +362,8 @@ public class Game {
         hidersTeam.setPrefix("§2§l[ §a§lHIDER §2§l] ");
         hidersTeam.setColor(ChatColor.GREEN);
 
+        scoreboard = createGameScoreboard();
+
         for(Player eachPlayer : players) {
             try {
                 new PlayerState(eachPlayer).saveState();
@@ -355,6 +375,8 @@ public class Game {
             PlayerState.prepareIdle(eachPlayer, true);
 
             eachPlayer.openInventory(teamSelectionScreen.getInventory());
+
+            eachPlayer.setScoreboard(scoreboard);
         }
 
         frozenPlayers.addAll(players);
@@ -477,7 +499,7 @@ public class Game {
                     bukkitTasks.add(new BukkitRunnable() {
                         @Override
                         public void run() {
-                            String timeLeftString = (finalI >= 60 ? "§c" + (finalI / 60) + "§em " : "") + "§c" + finalI % 60 + "§es";
+                            String timeLeftString = getFancyTimeLeft(finalI);
 
                             if(finalI % 2 == 0)
                                 sendSound(Sound.BLOCK_POINTED_DRIPSTONE_FALL, 0.6f, 2);
@@ -555,8 +577,9 @@ public class Game {
 
                         sendGameMessage("§eIf the hiders survive until the game is over, they win. Otherwise the seekers win.");
 
-                        int gameDuration = 30;
-                        for(int i = gameDuration; i >= 0; i--) {
+                        timeLeft = 30 * 60;
+
+                        for(int i = timeLeft / 60; i >= 0; i--) {
                             int finalI = i;
                             bukkitTasks.add(new BukkitRunnable() {
                                 @Override
@@ -567,6 +590,8 @@ public class Game {
 
                                         switch(finalI) { // Timed events
                                             case 24:
+                                                events.add(GameEvent.AUTO_COOK);
+
                                                 sendSound(Sound.BLOCK_BLASTFURNACE_FIRE_CRACKLE, 1, 0.5f);
                                                 sendGameMessage("§3§lAUTO COOKING! §bAnything in your inventory or picked up will be cooked automatically. No need to smelt them! This ends in 3 minutes.");
                                                 autoCook = true;
@@ -577,6 +602,7 @@ public class Game {
                                                 bukkitTasks.add(new BukkitRunnable() {
                                                     @Override
                                                     public void run() {
+                                                        events.remove(GameEvent.AUTO_COOK);
                                                         autoCook = false;
                                                         sendGameMessage("§cAuto cooking expired!");
                                                     }
@@ -584,10 +610,14 @@ public class Game {
 
                                                 break;
                                             case 20:
+                                                events.add(GameEvent.METEOR_RAIN);
+
                                                 sendSound(Sound.ITEM_GOAT_HORN_SOUND_3, 1, 2);
                                                 sendGameMessage("§c§lMETEOR RAIN! §cHead to shelter!");
 
-                                                for(int i = 0; i < 10; i++) {
+                                                final int meteorAmount = 10;
+                                                for(int i = 0; i < meteorAmount; i++) {
+                                                    boolean isLast = i == meteorAmount - 1;
                                                     bukkitTasks.add(new BukkitRunnable() {
                                                         @Override
                                                         public void run() {
@@ -608,6 +638,9 @@ public class Game {
                                                             meteor.setYield(8);
 
                                                             meteor.setDirection(targetLocation.toVector().subtract(meteorStart.toVector()));
+
+                                                            if(isLast)
+                                                                events.remove(GameEvent.METEOR_RAIN);
                                                         }
                                                     }.runTaskLater(WorldEater.getPlugin(), 20 * (i + 1) * 15));
                                                 }
@@ -616,6 +649,8 @@ public class Game {
                                             case 22:
                                             case 15:
                                             case 8:
+                                                events.add(GameEvent.VISIBLE_HIDERS);
+
                                                 sendSound(Sound.ITEM_GOAT_HORN_SOUND_7, 1, 0.8f);
                                                 sendGameMessage("§c§lALERT! §eHiders are now visible for 10 seconds!");
                                                 for(Player hider : hiders) {
@@ -626,34 +661,50 @@ public class Game {
                                                             )
                                                     );
                                                 }
+
+                                                bukkitTasks.add(new BukkitRunnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        events.remove(GameEvent.VISIBLE_HIDERS);
+                                                    }
+                                                }.runTaskLater(WorldEater.getPlugin(), 20 * 10));
                                                 break;
                                             case 12:
+                                                events.add(GameEvent.DRILLING);
+
                                                 sendSound(Sound.ITEM_GOAT_HORN_SOUND_4, 1, 2f);
                                                 sendGameMessage("§c§lDRILLING! §cDrills will now be performed randomly. A whole Y-axis will be drilled down into void!");
                                                 Random random = new Random();
 
-                                                for(int i = 0; i < 15; i++) {
+                                                final int drillHoles = 15;
+                                                for(int i = 0; i < drillHoles; i++) {
+                                                    boolean isLast = i == drillHoles - 1;
+
                                                     bukkitTasks.add(new BukkitRunnable() {
                                                         @Override
                                                         public void run() {
                                                             Location drillLocation = new Location(world, random.nextInt(0, 16), 0, random.nextInt(0, 16));
-                                                            int yMax = world.getMaxHeight();
+                                                            int yMax = world.getMaxHeight(), yMin = world.getMinHeight();
 
-                                                            for(int y = world.getMinHeight(); y < yMax; y++) {
+                                                            for(int y = yMin; y < yMax; y++) {
                                                                 Location drillBlock = drillLocation.clone();
                                                                 drillBlock.setY(y);
 
                                                                 world.spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 3);
                                                                 int finalY = y;
+                                                                boolean isLast2 = isLast && y == yMin + 1;
 
                                                                 bukkitTasks.add(new BukkitRunnable() {
                                                                     @Override
                                                                     public void run() {
                                                                         if(finalY % 2 == 0)
                                                                             world.playSound(drillBlock, Sound.BLOCK_BAMBOO_BREAK, 1, 2f);
+
                                                                         world.spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 5);
                                                                         drillBlock.getBlock().setBlockData(Material.AIR.createBlockData(), false);
-                                                                        //drillBlock.getBlock().breakNaturally();
+
+                                                                        if(isLast2)
+                                                                            events.remove(GameEvent.DRILLING);
                                                                     }
                                                                 }.runTaskLater(WorldEater.getPlugin(), 2L * (yMax - y)));
                                                             }
@@ -663,6 +714,8 @@ public class Game {
 
                                                 break;
                                             case 10:
+                                                events.add(GameEvent.SHRINKING_WORLD_BORDER);
+
                                                 sendSound(Sound.ITEM_GOAT_HORN_SOUND_6, 1, 2);
                                                 sendGameMessage("§eThe world border will shrink in §c30§e seconds!");
 
@@ -675,19 +728,27 @@ public class Game {
                                                         world.getWorldBorder().setWarningTime(20);
                                                         world.getWorldBorder().setCenter(getSpawnLocation());
                                                         sendGameMessage("§eWorld border has shrunk!");
+
+                                                        events.remove(GameEvent.SHRINKING_WORLD_BORDER);
                                                     }
                                                 }.runTaskLater(WorldEater.getPlugin(), 20 * 30));
                                                 break;
                                             case 5:
+                                                events.add(GameEvent.EXPLODING_HORSES);
+
                                                 sendGameMessage("§8<§k-§8> §4§lSUDDEN DEATH! §cExploding horses will appear. They may be killed with a single hit, but - if not - they will put you down.");
 
                                                 sendSound(Sound.ENTITY_HORSE_ANGRY, 5, 5);
 
-                                                for(int i = 0; i < 20; i++) {
+                                                final int horseCount = 20;
+
+                                                for(int i = 0; i < horseCount; i++) {
+                                                    boolean isLast = i == horseCount - 1;
+
                                                     bukkitTasks.add(new BukkitRunnable() {
                                                         @Override
                                                         public void run() {
-                                                            if(Math.random() * 10 < 2) {
+                                                            if(Math.random() * 10 < 3) {
                                                                 Player unluckyPlayer = getRandomPlayer();
                                                                 unluckyPlayer.playSound(unluckyPlayer, Sound.ENTITY_HORSE_ANGRY, 6, 6);
 
@@ -704,6 +765,9 @@ public class Game {
                                                                             horse.remove();
                                                                             world.createExplosion(horse.getLocation(), 12);
                                                                         }
+
+                                                                        if(isLast)
+                                                                            events.remove(GameEvent.EXPLODING_HORSES);
                                                                     }
                                                                 }.runTaskLater(WorldEater.getPlugin(), 20 * 4));
                                                             }
@@ -729,8 +793,16 @@ public class Game {
                                         stop(true);
                                     }
                                 }
-                            }.runTaskLater(WorldEater.getPlugin(), 20L * 60 * (gameDuration - i)));
+                            }.runTaskLater(WorldEater.getPlugin(), 20L * 60 * (timeLeft - i)));
                         }
+
+                        bukkitTasks.add(new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                updateScoreboard();
+                                timeLeft--;
+                            }
+                        }.runTaskTimer(WorldEater.getPlugin(), 40, 20));
                     }
                 }.runTaskLater(WorldEater.getPlugin(), 20 * secondsToRelease));
             }
@@ -769,10 +841,8 @@ public class Game {
         for(BukkitTask bukkitTask : bukkitTasks)
             bukkitTask.cancel();
 
-        if(eventListener != null) {
-            eventListener.stopPacketListener();
+        if(eventListener != null)
             HandlerList.unregisterAll(eventListener);
-        }
 
         new BukkitRunnable() {
             @Override
@@ -987,10 +1057,13 @@ public class Game {
 
         for(int x = 0; x < 16; x++)
             for(int z = 0; z < 16; z++)
-                if(hasLiquidOnTop(chunk.getWorld(), (chunk.getX() << 4) + x, (chunk.getZ() << 4) + z))
+                if(hasLiquidOnTop(chunk.getWorld(), (chunk.getX() << 4) + x, (chunk.getZ() << 4) + z)) {
                     floodPoints++;
+                    if(floodPoints > 10)
+                        return true;
+                }
 
-        return floodPoints > 10;
+        return false;
     }
 
     private void spawnEntityInNaturalHabitat(EntityType type) {
@@ -1048,5 +1121,39 @@ public class Game {
     private void preparingGameProgressUpdate(PreparationStep step) {
         for(Player eachPlayer : players)
             eachPlayer.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§3§lPREPARING GAME §b" + (step.ordinal() + 1) + "§3/§b" + PreparationStep.values().length));
+    }
+
+    private static Scoreboard createGameScoreboard() {
+        Scoreboard scoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getNewScoreboard();
+
+        Objective objective = scoreboard.registerNewObjective("worldeater_scoreboard", Criteria.DUMMY, "§6§lWORLD§2§lEATER");
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        return scoreboard;
+    }
+
+    private static void setObjectiveLines(Objective objective, String[] lines) {
+        Objects.requireNonNull(objective.getScoreboard()).resetScores(objective.getName());
+
+        int i = 0;
+        for(String line : lines)
+            objective.getScore(line).setScore(lines.length - i++);
+    }
+
+    private void updateScoreboard() {
+        setObjectiveLines(scoreboard.getObjectives().iterator().next(), new String[] {
+                "§eTime remaining: " + getFancyTimeLeft(timeLeft),
+                "§e" + players.size() + " playing:",
+                "§c" + (players.size() - hiders.size()) + "§e seeking",
+                "§a" + hiders.size() + "§e hiding",
+                "§7---",
+                "§7" + spectators.size() + "§8 spectating",
+                "§7---",
+                events.size() == 0 ? "§7No event" : events.get(0).eventName
+        });
+    }
+
+    private static String getFancyTimeLeft(int countdown) {
+        return (countdown >= 60 ? "§c" + (countdown / 60) + "§em " : "") + "§c" + countdown % 60 + "§es";
     }
 }
