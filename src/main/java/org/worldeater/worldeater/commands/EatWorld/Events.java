@@ -80,10 +80,20 @@ public final class Events implements Listener {
                 player.spigot().respawn();
                 player.setBedSpawnLocation(realSpawn);
 
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        player.setLastDeathLocation(null);
+                    }
+                }.runTaskLater(WorldEater.getPlugin(), 0);
+
                 if(game.spectators.contains(player))
                     return;
 
                 if(!game.hiders.contains(player)) {
+                    e.setKeepInventory(true);
+                    e.getDrops().clear();
+
                     game.seekerRespawn(player);
 
                     ItemStack item = new ItemStack(Material.PLAYER_HEAD);
@@ -98,7 +108,7 @@ public final class Events implements Listener {
                     item.setItemMeta(skullMeta);
 
                     ghostHeadItems.add(item);
-                    game.world.dropItemNaturally(Objects.requireNonNull(player.getLastDeathLocation()), item);
+                    e.getDrops().add(item);
                 } else {
                     PlayerState.prepareNormal(player, false);
 

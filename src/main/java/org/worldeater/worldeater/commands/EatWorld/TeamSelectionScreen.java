@@ -43,7 +43,7 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
         checkGameStateTask = Bukkit.getScheduler().runTaskTimer(WorldEater.getPlugin(), () -> {
             if(game == null || game.status == Game.GameStatus.ENDED)
                 stop();
-        }, 0L, 20L);
+        }, 0, 20);
     }
 
     protected void update() {
