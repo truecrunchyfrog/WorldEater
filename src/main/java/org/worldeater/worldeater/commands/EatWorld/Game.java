@@ -316,8 +316,6 @@ public class Game {
 
         preparingGameProgressUpdate(PreparationStep.FINAL_SETUP);
 
-        world.setGameRule(GameRule.KEEP_INVENTORY, true);
-
         if(debug)
             sendGameMessage("Initializing animals...");
 
@@ -365,12 +363,6 @@ public class Game {
         scoreboard = createGameScoreboard();
 
         for(Player eachPlayer : players) {
-            try {
-                new PlayerState(eachPlayer).saveState();
-            } catch(IOException e) {
-                throw new RuntimeException(e);
-            }
-
             eachPlayer.teleport(getSpawnLocation());
             PlayerState.prepareIdle(eachPlayer, true);
 
@@ -844,6 +836,14 @@ public class Game {
         if(eventListener != null)
             HandlerList.unregisterAll(eventListener);
 
+        scoreboard.getObjectives().forEach(Objective::unregister);
+
+        for(String entry : seekersTeam.getEntries())
+            seekersTeam.removeEntry(entry);
+
+        for(String entry : hidersTeam.getEntries())
+            hidersTeam.removeEntry(entry);
+
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -854,13 +854,11 @@ public class Game {
                     restorePlayers.addAll(world.getPlayers());
                     restorePlayers.addAll(players);
 
-                    for(Player player : restorePlayers) {
-                        player.removeScoreboardTag("nhide");
-                        PlayerState.restoreState(player);
-
-                        if(player.getWorld() == world)
+                    for(Player player : restorePlayers)
+                        if(player.getWorld() == world) {
+                            PlayerState.prepareNormal(player, true);
                             player.teleport(WorldEater.getPlugin().getServer().getWorlds().get(0).getSpawnLocation());
-                    }
+                        }
 
                     new BukkitRunnable() {
                         @Override
@@ -932,14 +930,6 @@ public class Game {
 
     protected void playerJoin(Player player, boolean spectator, boolean saveState) {
         if(spectator) {
-            if(saveState) {
-                try {
-                    new PlayerState(player).saveState();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
             player.setGameMode(GameMode.SPECTATOR);
             player.teleport(getSpawnLocation());
 
@@ -976,7 +966,6 @@ public class Game {
     protected void playerLeave(Player player) {
         if(players.contains(player)) {
             players.remove(player);
-            PlayerState.restoreState(player);
 
             if(status == GameStatus.AWAITING_START) {
                 sendGameMessage("§cA player in queue left.");
@@ -1000,9 +989,9 @@ public class Game {
             }
 
             WorldEater.sendMessage(player, "§cYou left the game.");
+            player.setHealth(0);
         } else if(spectators.contains(player)) {
             spectators.remove(player);
-            PlayerState.restoreState(player);
 
             sendGameMessage("Spectator §e" + player.getName() + "§7 left.");
             WorldEater.sendMessage(player, "§cYou stopped spectating the game.");
@@ -1133,7 +1122,8 @@ public class Game {
     }
 
     private static void setObjectiveLines(Objective objective, String[] lines) {
-        Objects.requireNonNull(objective.getScoreboard()).resetScores(objective.getName());
+        for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
+            objective.getScoreboard().resetScores(score);
 
         int i = 0;
         for(String line : lines)
@@ -1141,7 +1131,7 @@ public class Game {
     }
 
     private void updateScoreboard() {
-        setObjectiveLines(scoreboard.getObjectives().iterator().next(), new String[] {
+        setObjectiveLines(scoreboard.getObjectives().toArray(new Objective[0])[0], new String[] {
                 "§eTime remaining: " + getFancyTimeLeft(timeLeft),
                 "§e" + players.size() + " playing:",
                 "§c" + (players.size() - hiders.size()) + "§e seeking",
