@@ -133,10 +133,10 @@ public class TeamSelectionScreen implements InventoryHolder, Listener {
 
     @EventHandler
     private void onInventoryClick(InventoryClickEvent e) {
-        if(e.getWhoClicked() instanceof Player) {
+        if(e.getWhoClicked() instanceof Player && inventory.equals(e.getInventory())) {
             Player player = (Player) e.getWhoClicked();
 
-            if(e.getInventory() == inventory && (seekers.contains(player) || hiders.contains(player))) {
+            if(seekers.contains(player) || hiders.contains(player)) {
                 e.setCancelled(true);
                 int slot = e.getSlot();
 
