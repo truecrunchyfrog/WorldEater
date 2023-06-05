@@ -4,16 +4,17 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.data.Waterlogged;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.PortalCreateEvent;
@@ -26,9 +27,11 @@ import org.worldeater.worldeater.WorldEater;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import static org.worldeater.worldeater.WorldEater.getCookedItem;
+import static org.worldeater.worldeater.WorldEater.getPlugin;
 
 public final class Events implements Listener {
     private final Game game;
@@ -117,7 +120,7 @@ public final class Events implements Listener {
                     } else {
                         game.hiders.remove(player);
                         game.players.remove(player);
-                        game.playerJoin(player, true, false); // Make dead player spectator.
+                        game.playerJoin(player, true); // Make dead player spectator.
                     }
                 }
             }, 2);
@@ -156,16 +159,28 @@ public final class Events implements Listener {
 
     @EventHandler
     private void onPortalCreateEvent(PortalCreateEvent e) {
-        if(Objects.requireNonNull(e.getEntity()).getWorld() == game.world)
+        if(e.getWorld() == game.world) {
+            Location averageBlock = new Location(game.world, 0, 0, 0);
+
+            for(BlockState eachBlock : e.getBlocks()) {
+                averageBlock.add(eachBlock.getLocation());
+                eachBlock.getBlock().breakNaturally();
+            }
+
+            averageBlock.multiply(1f / e.getBlocks().size());
+
+            game.world.strikeLightning(averageBlock);
+
             e.setCancelled(true);
+        }
     }
 
     @EventHandler
     private void onPlayerBedEnter(PlayerBedEnterEvent e) {
         if(game.players.contains(e.getPlayer())) {
-            e.setCancelled(true);
             e.getPlayer().setFireTicks(20);
             e.getPlayer().playSound(e.getPlayer(), Sound.ENTITY_PIGLIN_JEALOUS, 1, 0.5f);
+            e.setCancelled(true);
         }
     }
 

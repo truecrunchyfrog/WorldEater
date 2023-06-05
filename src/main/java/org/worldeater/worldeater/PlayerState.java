@@ -1,21 +1,14 @@
 package org.worldeater.worldeater;
 
 import org.bukkit.GameMode;
-import org.bukkit.GameRule;
-import org.bukkit.Location;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
+import java.util.Iterator;
 
 public class PlayerState {
     private static void prepareDefault(Player player) {

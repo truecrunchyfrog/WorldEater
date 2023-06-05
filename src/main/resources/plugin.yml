@@ -5,7 +5,7 @@ api-version: 1.19
 commands:
   eatworld:
     description: Eat this world
-    usage: /eatworld <join|leave|create|stop>
+    usage: /eatworld <join|leave|create|stop> [game ID|all|debug|server-wide]
 #permissions:
 #  operator:
 #    default: true

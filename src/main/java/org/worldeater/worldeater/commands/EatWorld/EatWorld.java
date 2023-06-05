@@ -4,6 +4,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.units.qual.A;
 import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
@@ -192,7 +193,7 @@ public class EatWorld implements TabExecutor {
                 if(game.debug)
                     WorldEater.sendMessage(commandSender, "§3Debug mode enabled. Adding all online players.");
 
-                if(game.debug || (strings.length > 1 && strings[1].equalsIgnoreCase("serverwide"))) {
+                if(game.debug || (strings.length > 1 && strings[1].equalsIgnoreCase("server-wide"))) {
                     int skippedPlayers = 0;
 
                     WorldEater.sendMessage(commandSender, "Adding all non-busy players to the game...");
@@ -281,31 +282,29 @@ public class EatWorld implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] strings) {
-        String[] defaultResponses = null;
-        String[] opResponses = null;
+        List<String> defaultCompletions = new ArrayList<>();
+        List<String> opCompletions = new ArrayList<>();
 
         if(command.getName().equals("eatworld")) {
             if(strings.length == 1) {
-                defaultResponses = new String[] {"play", "join", "leave", "resetme"};
-                opResponses = new String[] {"create", "stop", "list"};
+                defaultCompletions.addAll(Arrays.asList("play", "join", "leave", "resetme"));
+                opCompletions.addAll(Arrays.asList("create", "stop", "list"));
             } else if(strings.length > 1) {
                 switch(strings[0].toLowerCase()) {
                     case "join":
                         if(strings.length == 2)
-                            defaultResponses = getGameIds(false).toArray(new String[] {});
+                            defaultCompletions.addAll(getGameIds(false));
                         else
-                            defaultResponses = new String[] {"spectate"};
+                            defaultCompletions.add("spectate");
                         break;
                     case "create":
                         if(strings.length == 2)
-                            opResponses = new String[] {"serverwide", "debug"};
+                            opCompletions.addAll(Arrays.asList("server-wide", "debug"));
                         break;
                     case "stop":
                         if(strings.length == 2) {
-                            ArrayList<String> stopChoices = new ArrayList<>();
-                            stopChoices.add("all");
-                            stopChoices.addAll(getGameIds(false));
-                            opResponses = stopChoices.toArray(new String[]{});
+                            opCompletions.add("all");
+                            opCompletions.addAll(getGameIds(false));
                         }
                         break;
                 }
@@ -314,11 +313,11 @@ public class EatWorld implements TabExecutor {
 
         ArrayList<String> responses = new ArrayList<>();
 
-        if(defaultResponses != null)
-            responses.addAll(Arrays.asList(defaultResponses));
+        if(!defaultCompletions.isEmpty())
+            responses.addAll(defaultCompletions);
 
-        if(opResponses != null && commandSender.isOp())
-            responses.addAll(Arrays.asList(opResponses));
+        if(!opCompletions.isEmpty() && commandSender.isOp())
+            responses.addAll(opCompletions);
 
         return responses;
     }

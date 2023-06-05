@@ -64,7 +64,6 @@ public class Game {
     private final ArrayList<GameEvent> events;
 
     private enum GameEvent {
-        AUTO_COOK("Automatic cooking"),
         METEOR_RAIN("Meteor rain"),
         VISIBLE_HIDERS("Hiders are exposed"),
         DRILLING("Drilling"),
@@ -195,7 +194,7 @@ public class Game {
 
         sendGameMessage("Resetting void world...");
 
-        for(Entity entity : world.getEntities())
+        for(Entity entity : world.getChunkAt(0, 0).getEntities())
             entity.remove();
 
         for(int x = -64; x < 64; x++)
@@ -228,6 +227,7 @@ public class Game {
         if(debug)
             sendGameMessage("Copying bad chunk coordinates...");
 
+        @SuppressWarnings("unchecked")
         List<List<Integer>> badChunks = (List<List<Integer>>) badChunksConfig.getList("chunks");
 
         if(badChunks == null)
@@ -581,26 +581,6 @@ public class Game {
                                             sendGameMessage("§eThe game has §c" + finalI + "§e minutes remaining.");
 
                                         switch(finalI) { // Timed events
-                                            case 24:
-                                                events.add(GameEvent.AUTO_COOK);
-
-                                                sendSound(Sound.BLOCK_BLASTFURNACE_FIRE_CRACKLE, 1, 0.5f);
-                                                sendGameMessage("§3§lAUTO COOKING! §bAnything in your inventory or picked up will be cooked automatically. No need to smelt them! This ends in 3 minutes.");
-                                                autoCook = true;
-
-                                                for(Player player : players)
-                                                    cookPlayerInventory(player);
-
-                                                bukkitTasks.add(new BukkitRunnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        events.remove(GameEvent.AUTO_COOK);
-                                                        autoCook = false;
-                                                        sendGameMessage("§cAuto cooking expired!");
-                                                    }
-                                                }.runTaskLater(WorldEater.getPlugin(), 20 * 3));
-
-                                                break;
                                             case 20:
                                                 events.add(GameEvent.METEOR_RAIN);
 
@@ -925,10 +905,6 @@ public class Game {
     }
 
     protected void playerJoin(Player player, boolean spectator) {
-        playerJoin(player, spectator, true);
-    }
-
-    protected void playerJoin(Player player, boolean spectator, boolean saveState) {
         if(spectator) {
             player.setGameMode(GameMode.SPECTATOR);
             player.teleport(getSpawnLocation());
@@ -989,13 +965,14 @@ public class Game {
             }
 
             WorldEater.sendMessage(player, "§cYou left the game.");
-            player.setHealth(0);
         } else if(spectators.contains(player)) {
             spectators.remove(player);
 
             sendGameMessage("Spectator §e" + player.getName() + "§7 left.");
             WorldEater.sendMessage(player, "§cYou stopped spectating the game.");
         }
+
+        player.teleport(WorldEater.getPlugin().getServer().getWorlds().get(0).getSpawnLocation());
     }
 
     protected Location getCenterTopLocation() {
