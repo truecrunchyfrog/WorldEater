@@ -29,8 +29,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Objects;
 
-import static org.worldeater.worldeater.WorldEater.getCookedItem;
-
 public final class Events implements Listener {
     private final Game game;
     private final ArrayList<ItemStack> ghostHeadItems;
