@@ -4,7 +4,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
-import org.checkerframework.checker.units.qual.A;
 import org.worldeater.worldeater.PlayerState;
 import org.worldeater.worldeater.WorldEater;
 
@@ -15,6 +14,7 @@ import java.util.List;
 
 public class EatWorld implements TabExecutor {
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(strings.length > 0) {
             if(strings[0].equalsIgnoreCase("play")) {
@@ -281,6 +281,7 @@ public class EatWorld implements TabExecutor {
     }
 
     @Override
+    @SuppressWarnings("NullableProblems")
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] strings) {
         List<String> defaultCompletions = new ArrayList<>();
         List<String> opCompletions = new ArrayList<>();

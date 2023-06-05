@@ -42,7 +42,7 @@ public class Game {
     protected final ArrayList<Player> players, hiders, frozenPlayers, spectators;
     protected static final int maxPlayers = 10;
     protected World world;
-    protected ArrayList<BukkitTask> bukkitTasks;
+    protected final ArrayList<BukkitTask> bukkitTasks;
     protected boolean debug;
     private final Events eventListener;
     private Team seekersTeam;
@@ -59,7 +59,6 @@ public class Game {
         FINAL_SETUP
     }
 
-    protected boolean autoCook = false;
     private int timeLeft;
     private final ArrayList<GameEvent> events;
 
@@ -1076,12 +1075,6 @@ public class Game {
                 seeker.teleport(getSpawnLocation());
             }
         }.runTaskLater(WorldEater.getPlugin(), 20 * 10));
-    }
-
-    private void cookPlayerInventory(Player player) {
-        for(ItemStack item : player.getInventory())
-            if(getCookedItem(item) != null)
-                item.setType(Objects.requireNonNull(getCookedItem(item)).getType());
     }
 
     private void preparingGameProgressUpdate(PreparationStep step) {
