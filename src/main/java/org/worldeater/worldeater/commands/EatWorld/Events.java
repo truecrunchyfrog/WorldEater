@@ -202,12 +202,8 @@ public final class Events implements Listener {
 
     @EventHandler
     private void onEntityPickupItem(EntityPickupItemEvent e) {
-        if(e.getEntity().getWorld() == game.world) {
-            if(game.status != Game.GameStatus.RUNNING || game.frozenPlayers.contains((Player) e.getEntity()))
-                e.setCancelled(true);
-            else if(game.autoCook && getCookedItem(e.getItem().getItemStack()) != null)
-                e.getItem().setItemStack(Objects.requireNonNull(getCookedItem(e.getItem().getItemStack())));
-        }
+        if(e.getEntity().getWorld() == game.world && (game.status != Game.GameStatus.RUNNING || game.frozenPlayers.contains((Player) e.getEntity())))
+            e.setCancelled(true);
     }
 
     @EventHandler

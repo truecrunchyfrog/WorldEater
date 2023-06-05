@@ -10,7 +10,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.generator.WorldInfo;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -22,10 +21,11 @@ import org.worldeater.worldeater.WorldEater;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
-
-import static org.worldeater.worldeater.WorldEater.getCookedItem;
 
 public class Game {
     private final static ArrayList<Game> instances = new ArrayList<>();

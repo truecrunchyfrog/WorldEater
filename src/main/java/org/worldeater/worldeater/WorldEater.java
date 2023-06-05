@@ -65,16 +65,6 @@ public final class WorldEater extends JavaPlugin {
         player.spigot().sendMessage(textComponent);
     }
 
-    public static ItemStack getCookedItem(ItemStack inputItem) {
-        FurnaceRecipe recipe = Bukkit.getServer().getRecipesFor(inputItem).stream()
-                .filter(FurnaceRecipe.class::isInstance)
-                .map(FurnaceRecipe.class::cast)
-                .findFirst()
-                .orElse(null);
-
-        return recipe != null ? recipe.getResult().clone() : null;
-    }
-
     public File getPluginDirectory() {
         File dir = getDataFolder();
 
