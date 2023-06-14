@@ -815,7 +815,8 @@ public class Game {
         if(eventListener != null)
             HandlerList.unregisterAll(eventListener);
 
-        scoreboard.getObjectives().forEach(Objective::unregister);
+        if(scoreboard != null)
+            scoreboard.getObjectives().forEach(Objective::unregister);
 
         for(String entry : seekersTeam.getEntries())
             seekersTeam.removeEntry(entry);
