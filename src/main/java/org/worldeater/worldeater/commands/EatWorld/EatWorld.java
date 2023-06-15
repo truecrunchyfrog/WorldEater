@@ -167,9 +167,11 @@ public class EatWorld implements TabExecutor {
                 for(Game eachGame : gameInstances) {
                     if(eachGame.players.contains(player) || eachGame.spectators.contains(player)) {
                         eachGame.playerLeave(player);
-                        break;
+                        return true;
                     }
                 }
+
+                WorldEater.sendMessage(player, "§cYou are not in a game!");
             } else if(strings[0].equalsIgnoreCase("create")) {
                 if(!(commandSender instanceof Player)) {
                     WorldEater.sendMessage(commandSender, "§cOnly players can create games.");

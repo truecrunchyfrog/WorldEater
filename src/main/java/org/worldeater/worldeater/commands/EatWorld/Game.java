@@ -177,8 +177,8 @@ public class Game {
         WorldCreator worldCreator = new WorldCreator(cacheVoidWorldName);
 
         worldCreator.generator(new ChunkGenerator() {
-            @SuppressWarnings("all")
             @Override
+            @SuppressWarnings({"NullableProblems", "deprecation"})
             public ChunkData generateChunkData(World world, Random random, int x, int z, BiomeGrid biome) {
                 return createChunkData(world);
             }
@@ -818,11 +818,13 @@ public class Game {
         if(scoreboard != null)
             scoreboard.getObjectives().forEach(Objective::unregister);
 
-        for(String entry : seekersTeam.getEntries())
-            seekersTeam.removeEntry(entry);
+        if(seekersTeam != null)
+            for(String entry : seekersTeam.getEntries())
+                seekersTeam.removeEntry(entry);
 
-        for(String entry : hidersTeam.getEntries())
-            hidersTeam.removeEntry(entry);
+        if(hidersTeam != null)
+            for(String entry : hidersTeam.getEntries())
+                hidersTeam.removeEntry(entry);
 
         new BukkitRunnable() {
             @Override
