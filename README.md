@@ -1,3 +1,5 @@
+### *This game has been moved into the [NoxetServer](https://github.com/truecrunchyfrog/NoxetServer) project!*
+
 # WorldEater
 Spigot mini-game plugin. The hider tries to escape the seekers in a single chunk world, while the world is being devoured into air.
 
